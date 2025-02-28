@@ -1,0 +1,298 @@
+<template>
+  <div class="notifications-container">
+    <el-card class="notification-card">
+      <template #header>
+        <div class="card-header">
+          <h2>消息中心</h2>
+          <div class="header-actions">
+            <el-button type="primary" link @click="markAllRead">
+              <el-icon><Check /></el-icon>全部标记为已读
+            </el-button>
+            <el-button type="danger" link @click="clearAll">
+              <el-icon><Delete /></el-icon>清空消息
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="全部消息" name="all">
+          <div class="notification-list" v-if="notifications.length > 0">
+            <div
+              v-for="notification in notifications"
+              :key="notification.id"
+              class="notification-item"
+              :class="{ unread: !notification.read }"
+            >
+              <el-badge :is-dot="!notification.read" class="notification-badge">
+                <div class="notification-content">
+                  <div class="notification-icon">
+                    <el-icon :size="24" :color="getIconColor(notification.type)">
+                      <component :is="getIcon(notification.type)" />
+                    </el-icon>
+                  </div>
+                  <div class="notification-info">
+                    <div class="notification-title">{{ notification.title }}</div>
+                    <div class="notification-message">{{ notification.message }}</div>
+                    <div class="notification-time">{{ notification.time }}</div>
+                  </div>
+                  <div class="notification-actions">
+                    <el-button link type="primary" @click="viewDetail(notification)">
+                      查看详情
+                    </el-button>
+                    <el-button link type="danger" @click="deleteNotification(notification.id)">
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+              </el-badge>
+            </div>
+          </div>
+          <el-empty v-else description="暂无消息" />
+        </el-tab-pane>
+
+        <el-tab-pane label="未读消息" name="unread">
+          <div class="notification-list" v-if="unreadNotifications.length > 0">
+            <div
+              v-for="notification in unreadNotifications"
+              :key="notification.id"
+              class="notification-item unread"
+            >
+              <el-badge is-dot class="notification-badge">
+                <div class="notification-content">
+                  <div class="notification-icon">
+                    <el-icon :size="24" :color="getIconColor(notification.type)">
+                      <component :is="getIcon(notification.type)" />
+                    </el-icon>
+                  </div>
+                  <div class="notification-info">
+                    <div class="notification-title">{{ notification.title }}</div>
+                    <div class="notification-message">{{ notification.message }}</div>
+                    <div class="notification-time">{{ notification.time }}</div>
+                  </div>
+                  <div class="notification-actions">
+                    <el-button link type="primary" @click="viewDetail(notification)">
+                      查看详情
+                    </el-button>
+                    <el-button link type="danger" @click="deleteNotification(notification.id)">
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+              </el-badge>
+            </div>
+          </div>
+          <el-empty v-else description="暂无未读消息" />
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Bell,
+  Check,
+  Delete,
+  Tools,
+  Warning,
+  InfoFilled,
+  SuccessFilled
+} from '@element-plus/icons-vue'
+
+const router = useRouter()
+const activeTab = ref('all')
+
+// Mock数据
+const notifications = ref([
+  {
+    id: 1,
+    type: 'repair_update',
+    title: '维修工单状态更新',
+    message: '您的报修工单 R2023080001 已被接单处理',
+    time: '2023-08-15 10:30',
+    read: false
+  },
+  {
+    id: 2,
+    type: 'repair_complete',
+    title: '维修完成通知',
+    message: '工单 R2023080002 已完成维修，请及时评价',
+    time: '2023-08-15 09:15',
+    read: false
+  },
+  {
+    id: 3,
+    type: 'system',
+    title: '系统通知',
+    message: '系统将于今晚22:00-23:00进行维护升级',
+    time: '2023-08-14 16:00',
+    read: true
+  },
+  {
+    id: 4,
+    type: 'warning',
+    title: '紧急通知',
+    message: '3号教学楼电梯维修中，请绕行使用其他电梯',
+    time: '2023-08-14 08:30',
+    read: true
+  }
+])
+
+const unreadNotifications = computed(() => {
+  return notifications.value.filter(item => !item.read)
+})
+
+const getIcon = (type: string) => {
+  switch (type) {
+    case 'repair_update':
+      return Tools
+    case 'repair_complete':
+      return SuccessFilled
+    case 'warning':
+      return Warning
+    case 'system':
+      return InfoFilled
+    default:
+      return Bell
+  }
+}
+
+const getIconColor = (type: string) => {
+  switch (type) {
+    case 'repair_update':
+      return '#409EFF'
+    case 'repair_complete':
+      return '#67C23A'
+    case 'warning':
+      return '#E6A23C'
+    case 'system':
+      return '#909399'
+    default:
+      return '#409EFF'
+  }
+}
+
+const viewDetail = (notification: any) => {
+  if (notification.type.includes('repair')) {
+    // 提取工单号
+    const repairId = notification.message.match(/R\d+/)[0]
+    router.push(`/repair/${repairId}`)
+  }
+  // 标记为已读
+  notification.read = true
+}
+
+const deleteNotification = (id: number) => {
+  ElMessageBox.confirm('确定要删除这条消息吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    notifications.value = notifications.value.filter(item => item.id !== id)
+    ElMessage.success('删除成功')
+  })
+}
+
+const markAllRead = () => {
+  notifications.value.forEach(item => {
+    item.read = true
+  })
+  ElMessage.success('已全部标记为已读')
+}
+
+const clearAll = () => {
+  ElMessageBox.confirm('确定要清空所有消息吗？', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    notifications.value = []
+    ElMessage.success('清空成功')
+  })
+}
+</script>
+
+<style scoped lang="scss">
+.notifications-container {
+  padding: 20px;
+
+  .notification-card {
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h2 {
+        margin: 0;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+      }
+    }
+  }
+
+  .notification-list {
+    .notification-item {
+      padding: 16px;
+      border-bottom: 1px solid #ebeef5;
+      transition: background-color 0.3s;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &:hover {
+        background-color: #f5f7fa;
+      }
+
+      &.unread {
+        background-color: #ecf5ff;
+
+        &:hover {
+          background-color: #e5f1ff;
+        }
+      }
+
+      .notification-content {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+
+        .notification-icon {
+          padding-top: 4px;
+        }
+
+        .notification-info {
+          flex: 1;
+
+          .notification-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+          }
+
+          .notification-message {
+            color: #606266;
+            margin-bottom: 8px;
+          }
+
+          .notification-time {
+            color: #909399;
+            font-size: 12px;
+          }
+        }
+
+        .notification-actions {
+          display: flex;
+          gap: 12px;
+        }
+      }
+    }
+  }
+}
+</style>
