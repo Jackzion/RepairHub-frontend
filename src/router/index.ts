@@ -21,54 +21,79 @@ const router = createRouter({
       path: '/',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     {
       path: '/repair/new',
       name: 'new-repair',
       component: () => import('../views/NewRepairView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     {
       path: '/repair/:id',
       name: 'repair-detail',
       component: () => import('../views/RepairDetailView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     {
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      meta: { requiresAuth: false, requiresAdmin: false }
     },
     {
       path: '/equipment',
       name: 'equipment',
       component: () => import('../views/EquipmentView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      meta: { requiresAuth: false, requiresAdmin: false }
     },
     {
       path: '/statistics',
       name: 'statistics',
       component: () => import('../views/StatisticsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     {
       path: '/notifications',
       name: 'notifications',
       component: () => import('../views/NotificationsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     {
       path: '/knowledge',
       name: 'knowledge',
       component: () => import('../views/KnowledgeBaseView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     {
       path: '/ratings',
       name: 'repair-ratings',
       component: RepairRatingView,
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/maintainer/orders',
+      name: 'maintainer-orders',
+      component: () => import('../views/maintainer/OrdersView.vue'),
+      meta: { requiresAuth: false, requiresMaintainer: false }
+    },
+    {
+      path: '/maintainer/my-orders',
+      name: 'maintainer-my-orders',
+      component: () => import('../views/maintainer/MyOrdersView.vue'),
+      meta: { requiresAuth: false, requiresMaintainer: false }
+    },
+    {
+      path: '/maintainer/notifications',
+      name: 'maintainer-notifications',
+      component: () => import('../views/maintainer/NotificationsView.vue'),
+      meta: { requiresAuth: false, requiresMaintainer: false }
+    },
+    {
+      path: '/maintainer/statistics',
+      name: 'maintainer-statistics',
+      component: () => import('../views/maintainer/StatisticsView.vue'),
+      meta: { requiresAuth: false, requiresMaintainer: false }
     }
   ]
 });
@@ -80,6 +105,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authStore.token) {
     next('/login');
   } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+    next('/');
+  } else if (to.meta.requiresMaintainer && authStore.user?.role !== 'maintainer') {
     next('/');
   } else {
     next();
