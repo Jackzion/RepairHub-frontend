@@ -105,14 +105,14 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
+import { useLoginUserStore } from '../stores/user'
 
 const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
+const loginUser = useLoginUserStore()
 
 // 判断是否为维修人员
-const isMaintenanceStaff = authStore.user?.role === 'maintainer'
+const isMaintenanceStaff = loginUser.loginUser?.role === 'maintainer'
 
 // 报修信息
 const repair = ref({

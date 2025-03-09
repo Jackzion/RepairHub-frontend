@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-card">
       <template #header>
-        <h2>高校报修信息管理系统</h2>
+        <h2> RepairHub </h2>
       </template>
       <el-form
         ref="loginFormRef"
@@ -30,24 +30,11 @@
 
         <el-form-item label="角色" prop="role">
           <el-select v-model="loginForm.role" placeholder="请选择角色" class="w-full">
-            <el-option label="学生/教职工" value="user" />
-            <el-option label="维修人员" value="maintainer" />
-            <el-option label="管理员" value="admin" />
+            <el-option label="学生/教职工" :value="USER_ROLE_ENUM.USER" />
+            <el-option label="维修人员" :value="USER_ROLE_ENUM.MAINTAINER" />
+            <el-option label="管理员" :value="USER_ROLE_ENUM.ADMIN" />
           </el-select>
         </el-form-item>
-
-        <!-- <el-form-item label="验证码" prop="captcha">
-          <div class="captcha-container">
-            <el-input
-              v-model="loginForm.captcha"
-              placeholder="请输入验证码"
-              class="captcha-input"
-            />
-            <div class="captcha-image" @click="refreshCaptcha">
-              <img :src="captchaUrl" alt="验证码" />
-            </div>
-          </div>
-        </el-form-item> -->
 
         <div class="login-actions">
           <el-button type="primary" :loading="loading" @click="handleLogin" class="w-full">
@@ -68,34 +55,26 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
-import { useAuthStore } from '../stores/auth';
 import type { LoginForm } from '../types/user';
+import USER_ROLE_ENUM from '../enums/USER_ROLE_ENUM';
+import { useLoginUserStore } from '../stores/user';
+import { userLogin } from '../api/userController';
 
 const router = useRouter();
-const authStore = useAuthStore();
+const userStore= useLoginUserStore();
 const loginFormRef = ref();
 const loading = ref(false);
 
-const loginForm = reactive<LoginForm>({
+const loginForm = reactive<API.UserLoginRequest>({
   username: '',
   password: '',
   role: '',
-  captcha: ''
 });
 
 const loginRules = {
   username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
-  captcha: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
-};
-
-// 模拟验证码URL
-const captchaUrl = ref('https://via.placeholder.com/100x40?text=1234');
-
-const refreshCaptcha = () => {
-  // 这里后续实现刷新验证码的逻辑
-  captchaUrl.value = `https://via.placeholder.com/100x40?text=${Math.floor(Math.random() * 9000 + 1000)}`;
+  role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 };
 
 const handleLogin = async () => {
@@ -105,8 +84,9 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true;
       try {
-        const success = await authStore.login(loginForm);
-        if (success) {
+        const res = await userLogin(loginForm)
+        if (res.data.code === 0 && res.data.data) {
+          userStore.setLoginStore(res.data.data);
           router.push('/');
         }
       } finally {

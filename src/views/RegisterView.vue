@@ -63,8 +63,8 @@
 
         <el-form-item label="角色" prop="role">
           <el-select v-model="registerForm.role" placeholder="请选择角色" class="w-full">
-            <el-option label="学生/教职工" value="user" />
-            <el-option label="维修人员" value="maintainer" />
+            <el-option label="学生/教职工" :value="USER_ROLE_ENUM.USER" />
+            <el-option label="维修人员" :value="USER_ROLE_ENUM.MAINTAINER" />
           </el-select>
         </el-form-item>
 
@@ -87,6 +87,8 @@ import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Lock, Phone } from '@element-plus/icons-vue';
+import USER_ROLE_ENUM from '../enums/USER_ROLE_ENUM';
+import { userRegister } from '../api/userController';
 
 interface RegisterForm {
   username: string;
@@ -158,15 +160,24 @@ const registerRules = {
 
 const handleRegister = async () => {
   if (!registerFormRef.value) return;
-
+  const registerRequest:API.UserRegisterRequest = {
+    username: registerForm.username,
+    password: registerForm.password,
+    name: registerForm.name,
+    phone: registerForm.phone,
+    department: registerForm.department,
+    role: registerForm.role
+  };
   await registerFormRef.value.validate(async (valid: boolean) => {
     if (valid) {
       loading.value = true;
       try {
         // TODO: 实现注册API调用
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        ElMessage.success('注册成功');
-        router.push('/login');
+        const res = await userRegister(registerRequest)
+        if (res.data.code === 0 && res.data.data) {
+          ElMessage.success('注册成功 ， running');
+          router.push('/login');
+        }
       } catch (error) {
         ElMessage.error('注册失败，请重试');
       } finally {

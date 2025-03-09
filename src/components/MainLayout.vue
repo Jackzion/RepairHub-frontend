@@ -67,7 +67,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
 import {
   DataLine,
   Plus,
@@ -79,13 +78,15 @@ import {
   ArrowDown,
   Star
 } from '@element-plus/icons-vue'
+import { useLoginUserStore } from '../stores/user'
+import { userLogout } from '../api/userController'
 
 const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
+const userStore = useLoginUserStore()
 
 const activeRoute = computed(() => route.path)
-const userName = computed(() => authStore.currentUser?.name || '用户')
+const userName = computed(() =>userStore.loginUser?.username || '未登录')
 const userAvatar = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
 
 const handleProfile = () => {
@@ -93,8 +94,13 @@ const handleProfile = () => {
   console.log('查看个人信息')
 }
 
-const handleLogout = () => {
-  authStore.logout()
+const handleLogout = async () => {
+  const res = await userLogout()
+  if (res.data.code === 0) {
+    userStore.clearLoginStore()
+  } else {
+    console.log('退出登录失败')
+   }
   router.push('/login')
 }
 </script>

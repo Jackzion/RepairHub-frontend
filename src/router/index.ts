@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
 import RepairRatingView from '../views/RepairRatingView.vue';
 
 const router = createRouter({
@@ -98,19 +97,18 @@ const router = createRouter({
   ]
 });
 
-// 路由守卫
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();
+// // 路由守卫
+// router.beforeEach((to, from, next) => {
   
-  if (to.meta.requiresAuth && !authStore.token) {
-    next('/login');
-  } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
-    next('/');
-  } else if (to.meta.requiresMaintainer && authStore.user?.role !== 'maintainer') {
-    next('/');
-  } else {
-    next();
-  }
-});
+//   if (to.meta.requiresAuth && !authStore.token) {
+//     next('/login');
+//   } else if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
+//     next('/');
+//   } else if (to.meta.requiresMaintainer && authStore.user?.role !== 'maintainer') {
+//     next('/');
+//   } else {
+//     next();
+//   }
+// });
 
 export default router;
