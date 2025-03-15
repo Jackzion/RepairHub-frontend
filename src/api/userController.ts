@@ -1,10 +1,10 @@
 // @ts-ignore
 /* eslint-disable */
-import request from '../axioss/request'
+import request from "@/axioss/request";
 
 /** 此处后端没有提供注释 POST /user/ban */
-export async function updateUser(
-  body: API.UpdateUserRequest,
+export async function banUser(
+  body: API.BanUserRequest,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponseBoolean>("/user/ban", {
@@ -64,8 +64,8 @@ export async function userRegister(
 }
 
 /** 此处后端没有提供注释 POST /user/update */
-export async function banUser(
-  body: API.BanUserRequest,
+export async function updateUser(
+  body: API.UpdateUserRequest,
   options?: { [key: string]: any }
 ) {
   return request<API.BaseResponseBoolean>("/user/update", {

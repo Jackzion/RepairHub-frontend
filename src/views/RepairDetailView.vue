@@ -106,6 +106,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useLoginUserStore } from '../stores/user'
+import { getRepairById, updateRepairStatus } from '../api/repairsController'
+import { getRepairRecords, addRecord } from '../api/repairRecordsController'
 
 const route = useRoute()
 const router = useRouter()
@@ -144,36 +146,26 @@ const updating = ref(false)
 const updateFormRef = ref<FormInstance>()
 
 // 获取报修详情
-onMounted(async () => {
+const fetchRepairDetail = async () => {
   try {
-    // TODO: 调用API获取报修详情
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    // 模拟数据
-    repair.value = {
-      id: route.params.id as string,
-      type: 'air_conditioner',
-      location: ['教学楼', 'A栋', '3层'],
-      locationDetail: '3楼东侧走廊',
-      priority: 'urgent',
-      description: '空调不制冷，温度无法调节',
-      status: 'pending',
-      images: [],
-      creator: { name: '张三', id: '1001' },
-      createdAt: '2024-01-20 10:00:00',
-      records: [
-        {
-          id: '1',
-          type: 'create',
-          content: '创建报修工单',
-          createdAt: '2024-01-20 10:00:00',
-          handler: { name: '张三', id: '1001' }
-        }
-      ]
+    const repairId = route.params.id as string
+    const [repairRes, recordsRes] = await Promise.all([
+      getRepairById({ repairId }),
+      getRepairRecords({ repairId })
+    ])
+
+    if (repairRes.data.code === 0 && repairRes.data.data) {
+      repair.value = repairRes.data.data
+    }
+
+    if (recordsRes.data.code === 0 && recordsRes.data.data) {
+      repair.value.records = recordsRes.data.data.records || []
     }
   } catch (error) {
+    console.error('获取报修详情失败:', error)
     ElMessage.error('获取报修详情失败')
   }
-})
+}
 
 // 更新状态
 const handleUpdateStatus = async () => {
@@ -183,12 +175,32 @@ const handleUpdateStatus = async () => {
     if (valid) {
       updating.value = true
       try {
-        // TODO: 调用API更新状态
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        ElMessage.success('状态更新成功')
-        // 重新加载数据
-        // TODO: 重新获取报修详情
+        const repairId = repair.value.id
+        // 更新工单状态
+        const updateRes = await updateRepairStatus({
+          repairId,
+          status: updateForm.value.status
+        })
+
+        if (updateRes.data.code === 0) {
+          // 添加处理记录
+          await addRecord({
+            repairId,
+            content: updateForm.value.content,
+            type: updateForm.value.status
+          })
+
+          ElMessage.success('状态更新成功')
+          // 重新加载数据
+          await fetchRepairDetail()
+          // 清空表单
+          updateForm.value.status = ''
+          updateForm.value.content = ''
+        } else {
+          ElMessage.error(updateRes.data.message || '状态更新失败')
+        }
       } catch (error) {
+        console.error('状态更新失败:', error)
         ElMessage.error('状态更新失败')
       } finally {
         updating.value = false
@@ -196,6 +208,9 @@ const handleUpdateStatus = async () => {
     }
   })
 }
+
+// 初始化加载
+onMounted(fetchRepairDetail)
 
 // 工具函数
 const getStatusType = (status: string) => {

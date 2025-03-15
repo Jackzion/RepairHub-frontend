@@ -15,11 +15,12 @@
       >
         <el-form-item label="设备类型" prop="type">
           <el-select v-model="repairForm.type" placeholder="请选择设备类型" class="w-full">
-            <el-option label="空调" value="air_conditioner" />
-            <el-option label="水管" value="plumbing" />
-            <el-option label="电路" value="electrical" />
-            <el-option label="门窗" value="doors_windows" />
-            <el-option label="其他" value="others" />
+            <el-option
+              v-for="option in equipmentOptions"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            />
           </el-select>
         </el-form-item>
 
@@ -47,9 +48,9 @@
 
         <el-form-item label="紧急程度" prop="priority">
           <el-radio-group v-model="repairForm.priority">
-            <el-radio label="normal">普通</el-radio>
-            <el-radio label="urgent">紧急</el-radio>
-            <el-radio label="very_urgent">特急</el-radio>
+            <el-radio label="low">low</el-radio>
+            <el-radio label="medium">medium</el-radio>
+            <el-radio label="high">high</el-radio>
           </el-radio-group>
         </el-form-item>
 
@@ -96,84 +97,76 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Plus } from '@element-plus/icons-vue';
 import type { UploadFile } from 'element-plus';
+import { getAllLocations } from '../api/locationController';
+import { getEquipmentTypes } from '../api/equipmentTypesController';
+import { useLoginUserStore } from '../stores/user';
+import { submitRepair } from '../api/repairsController';
 
 const router = useRouter();
 const repairFormRef = ref();
 const loading = ref(false);
 const fileList = ref<UploadFile[]>([]);
+const userSotre = useLoginUserStore() 
 
-interface RepairForm {
-  type: string;
-  location: string[];
-  locationDetail: string;
-  priority: string;
-  description: string;
-}
 
-const repairForm = reactive<RepairForm>({
+const repairForm = reactive<API.RepairsSubmitRequest>({
   type: '',
   location: [],
   locationDetail: '',
-  priority: 'normal',
-  description: ''
+  priority: 'midum',
+  description: '',
+  creatorId: userSotre.loginUser?.id,
 });
 
-// Mock location data
-const locationOptions = [
-  {
-    value: 'teaching_building',
-    label: '教学楼',
-    children: [
-      {
-        value: 'building_a',
-        label: 'A楼',
-        children: [
-          { value: '1f', label: '1楼' },
-          { value: '2f', label: '2楼' },
-          { value: '3f', label: '3楼' }
-        ]
-      },
-      {
-        value: 'building_b',
-        label: 'B楼',
-        children: [
-          { value: '1f', label: '1楼' },
-          { value: '2f', label: '2楼' },
-          { value: '3f', label: '3楼' }
-        ]
-      }
-    ]
-  },
-  {
-    value: 'dormitory',
-    label: '宿舍楼',
-    children: [
-      {
-        value: 'building_1',
-        label: '1号楼',
-        children: [
-          { value: '1f', label: '1楼' },
-          { value: '2f', label: '2楼' },
-          { value: '3f', label: '3楼' },
-          { value: '4f', label: '4楼' },
-          { value: '5f', label: '5楼' }
-        ]
-      },
-      {
-        value: 'building_2',
-        label: '2号楼',
-        children: [
-          { value: '1f', label: '1楼' },
-          { value: '2f', label: '2楼' },
-          { value: '3f', label: '3楼' },
-          { value: '4f', label: '4楼' },
-          { value: '5f', label: '5楼' }
-        ]
-      }
-    ]
-  }
-];
+const locationOptions = ref([]);
 
+// 获取位置信息
+const fetchLocations = async () => {
+  try {
+    const res = await getAllLocations();
+    if (res.data.code === 0) {
+      // 转换数据为树形结构
+      const transformToTree = (items: any[]) => {
+        const map = new Map();
+        const roots = [];
+
+        // 先将所有项目转换为树节点格式并存入map
+        items.forEach(item => {
+          map.set(item.id, {
+            value: item.name,
+            label: item.name,
+            children: []
+          });
+        });
+
+        // 构建树形结构
+        items.forEach(item => {
+          const node = map.get(item.id);
+          if (item.parentId === null) {
+            roots.push(node);
+          } else {
+            const parent = map.get(item.parentId);
+            if (parent) {
+              parent.children.push(node);
+            }
+          }
+        });
+
+        return roots;
+      };
+
+      locationOptions.value = transformToTree(res.data.data);
+    } else {
+      ElMessage.error(res.data.message || '获取位置信息失败');
+    }
+  } catch (error) {
+    console.error('获取位置信息失败:', error);
+    ElMessage.error('获取位置信息失败，请重试');
+  }
+};
+
+// 页面加载时获取位置信息
+fetchLocations();
 const repairRules = {
   type: [{ required: true, message: '请选择设备类型', trigger: 'change' }],
   location: [{ required: true, message: '请选择位置', trigger: 'change' }],
@@ -204,11 +197,42 @@ const handleSubmit = async () => {
     if (valid) {
       loading.value = true;
       try {
-        // TODO: 实现提交API调用
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        ElMessage.success('报修提交成功');
-        router.push('/');
+        // 准备表单数据
+        const formData = new FormData();
+        
+        // 转换位置信息为指定格式
+        const locationData = {
+          area: repairForm.location[0] || '',
+          building: repairForm.location[1] || '',
+          floor: repairForm.location[2] || ''
+        };
+
+        // 添加基本信息
+        const repairData = {
+          ...repairForm,
+          location: JSON.stringify(locationData),
+          status: 'pending',
+          images: JSON.stringify(["https://zh.wikipedia.org/wiki/Bing_Maps#/media/File:Bing_Fluent_Logo_Text.svg"]),
+          creatorId: userSotre.loginUser?.id
+        };
+        
+        // 添加图片
+        // fileList.value.forEach((file: UploadFile) => {
+        //   if (file.raw) {
+        //     formData.append('images', file.raw);
+        //   }
+        // });
+
+        // 提交报修
+        const res = await submitRepair(repairData);
+        if (res.data.code === 0) {
+          ElMessage.success('报修提交成功');
+          router.push('/');
+        } else {
+          ElMessage.error(res.data.message || '提交失败');
+        }
       } catch (error) {
+        console.error('提交报修失败:', error);
         ElMessage.error('提交失败，请重试');
       } finally {
         loading.value = false;
@@ -216,6 +240,29 @@ const handleSubmit = async () => {
     }
   });
 };
+
+const equipmentOptions = ref([]);
+
+// 获取设备类型
+const fetchEquipmentTypes = async () => {
+  try {
+    const res = await getEquipmentTypes();
+    if (res.data.code === 0) {
+      equipmentOptions.value = res.data.data.map(type => ({
+        label: type,
+        value: type.toLowerCase().replace(/ /g, '_')
+      }));
+    } else {
+      ElMessage.error(res.data.message || '获取设备类型失败');
+    }
+  } catch (error) {
+    console.error('获取设备类型失败:', error);
+    ElMessage.error('获取设备类型失败，请重试');
+  }
+};
+
+// 页面加载时获取设备类型
+fetchEquipmentTypes();
 </script>
 
 <style scoped lang="scss">
