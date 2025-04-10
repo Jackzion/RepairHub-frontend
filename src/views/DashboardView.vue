@@ -1,34 +1,16 @@
 <template>
   <div class="dashboard-container">
     <el-container>
-      <el-aside width="200px">
-        <el-menu
-          :default-active="activeMenu"
-          class="dashboard-menu"
-          @select="handleMenuSelect"
-        >
-          <el-menu-item index="overview">
-            <el-icon><DataLine /></el-icon>
-            <span>概览</span>
-          </el-menu-item>
-          <el-menu-item index="repairs">
-            <el-icon><List /></el-icon>
-            <span>报修记录</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-      
       <el-main>
         <div class="dashboard-header">
-          <h2>{{ pageTitle }}</h2>
+          <h2>工作台</h2>
           <el-button type="primary" @click="handleNewRepair">
             <el-icon><Plus /></el-icon>新建报修
           </el-button>
         </div>
 
         <!-- 概览面板 -->
-        <template v-if="activeMenu === 'overview'">
-          <el-row :gutter="20" class="dashboard-stats">
+        <el-row :gutter="20" class="dashboard-stats">
             <el-col :span="8">
               <el-card shadow="hover">
                 <template #header>
@@ -81,10 +63,8 @@
               </el-card>
             </el-col>
           </el-row>
-        </template>
 
         <!-- 报修记录列表 -->
-        <template v-else>
           <div class="repair-list-header">
             <el-input
               v-model="searchKeyword"
@@ -107,7 +87,11 @@
           <el-table :data="filteredRepairs" style="width: 100%">
             <el-table-column prop="id" label="报修单号" width="120" />
             <el-table-column prop="type" label="设备类型" width="120" />
-            <el-table-column prop="location" label="位置" width="180" />
+            <el-table-column prop="location" label="位置" width="180">
+              <template #default="{ row }">
+                {{ typeof row.location === 'string' ? JSON.parse(row.location).area + ' - ' + JSON.parse(row.location).building + ' - ' + JSON.parse(row.location).floor : row.location?.area + ' - ' + row.location?.building + ' - ' + row.location?.floor }} {{ row.locationDetail }}
+              </template>
+            </el-table-column>
             <el-table-column prop="description" label="问题描述" show-overflow-tooltip />
             <el-table-column prop="status" label="状态" width="100">
               <template #default="{ row }">
@@ -116,30 +100,47 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="createdAt" label="提交时间" width="180" />
+            <el-table-column prop="createdAt" label="提交时间" width="180">
+              <template #default="{ row }">
+                {{ new Date(row.createdAt).toLocaleString() }}
+              </template>
+            </el-table-column>            
             <el-table-column label="操作" width="120" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" @click="viewDetail(row.id)">
-                  查看详情
-                </el-button>
+                <div class="operation-buttons">
+                  <el-button link type="primary" @click="viewDetail(row.id)">
+                    查看详情
+                  </el-button>
+                  <el-button v-if="row.status === 'pending' && loginUser.role === USER_ROLE_ENUM.USER" link type="danger" @click="handleDelete(row.id)">
+                    取消工单
+                  </el-button>
+                  <el-button v-if="row.status !== 'completed' && loginUser.role === USER_ROLE_ENUM.ADMIN" link type="danger" @click="handleFinish(row.id)">
+                    强制删除
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
-        </template>
       </el-main>
     </el-container>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { DataLine, List, Plus, Search } from '@element-plus/icons-vue';
+import { getUserRepairs, getUserRepairs1 , cancelPendingRepair , forceCloseRepair } from '../api/repairsController';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { useLoginUserStore } from '../stores/user'
+import  USER_ROLE_ENUM  from '../enums/USER_ROLE_ENUM';
 
 const router = useRouter();
-const activeMenu = ref('overview');
 const searchKeyword = ref('');
 const statusFilter = ref('');
+
+const userStore = useLoginUserStore()
+const loginUser = computed(() => userStore.loginUser)
 
 // Mock data
 const stats = ref({
@@ -151,36 +152,16 @@ const stats = ref({
   completedPercentage: 48
 });
 
-const repairs = ref([
-  {
-    id: 'R2023080001',
-    type: '空调',
-    location: '教学楼A-203',
-    description: '空调制冷效果差',
-    status: 'pending',
-    createdAt: '2023-08-01 10:30:00'
-  },
-  {
-    id: 'R2023080002',
-    type: '水管',
-    location: '宿舍楼3-521',
-    description: '水管漏水',
-    status: 'processing',
-    createdAt: '2023-08-01 14:20:00'
-  },
-  {
-    id: 'R2023080003',
-    type: '电路',
-    location: '图书馆2楼',
-    description: '插座无法使用',
-    status: 'completed',
-    createdAt: '2023-08-02 09:15:00'
-  }
-]);
+const repairs = ref<API.Repairs[]>([])
 
-const pageTitle = computed(() => {
-  return activeMenu.value === 'overview' ? '工作台' : '报修记录';
+onMounted(() => {
+  fetchRepairs();
 });
+
+const fetchRepairs = async () => {
+  const res = await getUserRepairs1();
+  repairs.value = res.data.data;
+};
 
 const filteredRepairs = computed(() => {
   let result = repairs.value;
@@ -201,10 +182,6 @@ const filteredRepairs = computed(() => {
 
   return result;
 });
-
-const handleMenuSelect = (index: string) => {
-  activeMenu.value = index;
-};
 
 const handleNewRepair = () => {
   router.push('/repair/new');
@@ -231,6 +208,41 @@ const getStatusText = (status: string) => {
   };
   return texts[status] || status;
 };
+
+const handleDelete = async (id: string) => {
+  try {
+    await ElMessageBox.confirm('确认删除该报修工单吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    });
+    await cancelPendingRepair({repairId:id});
+    ElMessage.success('删除成功');
+    fetchRepairs();
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败');
+    }
+  }
+};
+
+const handleFinish = async (id: string) => {
+  try {
+    await ElMessageBox.confirm('确认强制完成该报修工单吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    });
+    await cancelPendingRepair({repairId:id});
+    ElMessage.success('强制完成成功');
+    fetchRepairs();
+  }
+  catch (error) {
+    if (error!== 'cancel') {
+      ElMessage.error('强制完成失败');
+    }
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -240,16 +252,6 @@ const getStatusText = (status: string) => {
 
   .el-container {
     height: 100%;
-  }
-
-  .el-aside {
-    background-color: #fff;
-    border-right: 1px solid #e6e6e6;
-  }
-
-  .dashboard-menu {
-    height: 100%;
-    border-right: none;
   }
 
   .el-main {

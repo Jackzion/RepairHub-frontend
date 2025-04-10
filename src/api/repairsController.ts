@@ -2,20 +2,6 @@
 /* eslint-disable */
 import request from "@/axioss/request";
 
-/** 此处后端没有提供注释 DELETE /repairs/${param0} */
-export async function cancelRepair(
-  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
-  params: API.cancelRepairParams,
-  options?: { [key: string]: any }
-) {
-  const { repairId: param0, ...queryParams } = params;
-  return request<API.BaseResponseBoolean>(`/repairs/${param0}`, {
-    method: "DELETE",
-    params: { ...queryParams },
-    ...(options || {}),
-  });
-}
-
 /** 此处后端没有提供注释 PUT /repairs/${param0}/accept */
 export async function acceptRepair(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
@@ -61,31 +47,106 @@ export async function completeRepair(
   });
 }
 
-/** 此处后端没有提供注释 PUT /repairs/${param0}/force-close */
+/** 此处后端没有提供注释 GET /repairs/cancelPendingRepair */
+export async function cancelPendingRepair(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.cancelPendingRepairParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>("/repairs/cancelPendingRepair", {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** 此处后端没有提供注释 PUT /repairs/force-close */
 export async function forceCloseRepair(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.forceCloseRepairParams,
   options?: { [key: string]: any }
 ) {
-  const { repairId: param0, ...queryParams } = params;
-  return request<API.BaseResponseBoolean>(`/repairs/${param0}/force-close`, {
+  return request<API.BaseResponseBoolean>("/repairs/force-close", {
     method: "PUT",
-    params: { ...queryParams },
+    params: {
+      ...params,
+    },
     ...(options || {}),
   });
 }
 
-/** 此处后端没有提供注释 PUT /repairs/${param0}/priority */
+/** 此处后端没有提供注释 GET /repairs/get */
+export async function getRepairsById(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getRepairsByIdParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseRepairs>("/repairs/get", {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** 此处后端没有提供注释 GET /repairs/getRepairRecord */
+export async function getRepairRecord(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getRepairRecordParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseRepairRecords>("/repairs/getRepairRecord", {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** 此处后端没有提供注释 GET /repairs/getUserRepairs */
+export async function getUserRepairs1(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getUserRepairs1Params,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseListRepairs>("/repairs/getUserRepairs", {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** 此处后端没有提供注释 PUT /repairs/priority */
 export async function updatePriority(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.updatePriorityParams,
   options?: { [key: string]: any }
 ) {
-  const { repairId: param0, ...queryParams } = params;
-  return request<API.BaseResponseRepairs>(`/repairs/${param0}/priority`, {
+  return request<API.BaseResponseRepairs>("/repairs/priority", {
     method: "PUT",
     params: {
-      ...queryParams,
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** 此处后端没有提供注释 PUT /repairs/status/update */
+export async function updateRepairStatus(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.updateRepairStatusParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseRepairs>("/repairs/status/update", {
+    method: "PUT",
+    params: {
+      ...params,
     },
     ...(options || {}),
   });

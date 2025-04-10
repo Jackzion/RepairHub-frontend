@@ -17,7 +17,7 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="设备类型">
-          {{ getDeviceTypeText(repair.type) }}
+          {{ repair.type }}
         </el-descriptions-item>
         <el-descriptions-item label="紧急程度">
           <el-tag :type="getPriorityType(repair.priority)">
@@ -25,16 +25,16 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="位置信息" :span="2">
-          {{ repair.location?.join(' - ') }} - {{ repair.locationDetail }}
+          {{ typeof repair.location === 'string' ? JSON.parse(repair.location).area + ' - ' + JSON.parse(repair.location).building + ' - ' + JSON.parse(repair.location).floor : repair.location?.area + ' - ' + repair.location?.building + ' - ' + repair.location?.floor }} {{ repair.locationDetail }}
         </el-descriptions-item>
         <el-descriptions-item label="问题描述" :span="2">
           {{ repair.description }}
         </el-descriptions-item>
         <el-descriptions-item label="报修时间">
-          {{ formatDate(repair.createdAt) }}
+          {{ formatDateTime(repair.createdAt) }}
         </el-descriptions-item>
         <el-descriptions-item label="报修人">
-          {{ repair.creator?.name }}
+          {{ repair.creatorId }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -56,9 +56,9 @@
         <h3>处理记录</h3>
         <el-timeline>
           <el-timeline-item
-            v-for="record in repair.records"
+            v-for="record in records"
             :key="record.id"
-            :timestamp="formatDate(record.createdAt)"
+            :timestamp="formatDateTime(record.createdAt)"
             :type="getTimelineItemType(record.type)"
           >
             <h4>{{ getRecordTypeText(record.type) }}</h4>
@@ -71,7 +71,7 @@
       </div>
 
       <!-- 状态更新（仅维修人员可见） -->
-      <div v-if="isMaintenanceStaff" class="status-update">
+      <div class="status-update">
         <el-divider />
         <h3>更新状态</h3>
         <el-form :model="updateForm" :rules="updateRules" ref="updateFormRef" label-width="100px">
@@ -106,7 +106,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useLoginUserStore } from '../stores/user'
-import { getRepairById, updateRepairStatus } from '../api/repairsController'
+import { getRepairsById , updateRepairStatus} from '../api/repairsController'
 import { getRepairRecords, addRecord } from '../api/repairRecordsController'
 
 const route = useRoute()
@@ -117,19 +117,9 @@ const loginUser = useLoginUserStore()
 const isMaintenanceStaff = loginUser.loginUser?.role === 'maintainer'
 
 // 报修信息
-const repair = ref({
-  id: '',
-  type: '',
-  location: [],
-  locationDetail: '',
-  priority: '',
-  description: '',
-  status: 'pending',
-  images: [],
-  creator: null,
-  createdAt: '',
-  records: []
-})
+const repair = ref<API.Repairs>({})
+// 报修记录
+const records = ref<API.RepairRecords[]>([])
 
 // 状态更新表单
 const updateForm = ref({
@@ -150,16 +140,19 @@ const fetchRepairDetail = async () => {
   try {
     const repairId = route.params.id as string
     const [repairRes, recordsRes] = await Promise.all([
-      getRepairById({ repairId }),
+      getRepairsById({ repairId }),
       getRepairRecords({ repairId })
     ])
 
     if (repairRes.data.code === 0 && repairRes.data.data) {
       repair.value = repairRes.data.data
+      // 解析图片数组
+      if (typeof repair.value.images === 'string') {
+        repair.value.images = JSON.parse(repair.value.images)
+      }
     }
-
     if (recordsRes.data.code === 0 && recordsRes.data.data) {
-      repair.value.records = recordsRes.data.data.records || []
+      records.value = recordsRes.data.data.records || []
     }
   } catch (error) {
     console.error('获取报修详情失败:', error)
@@ -185,7 +178,7 @@ const handleUpdateStatus = async () => {
         if (updateRes.data.code === 0) {
           // 添加处理记录
           await addRecord({
-            repairId,
+            repairId: repairId,
             content: updateForm.value.content,
             type: updateForm.value.status
           })
@@ -231,17 +224,6 @@ const getStatusText = (status: string) => {
   return texts[status] || '未知状态'
 }
 
-const getDeviceTypeText = (type: string) => {
-  const texts: Record<string, string> = {
-    air_conditioner: '空调',
-    plumbing: '水管',
-    electrical: '电路',
-    doors_windows: '门窗',
-    others: '其他'
-  }
-  return texts[type] || '未知类型'
-}
-
 const getPriorityType = (priority: string) => {
   const types: Record<string, string> = {
     normal: 'info',
@@ -253,9 +235,9 @@ const getPriorityType = (priority: string) => {
 
 const getPriorityText = (priority: string) => {
   const texts: Record<string, string> = {
-    normal: '普通',
-    urgent: '紧急',
-    very_urgent: '特急'
+    low: '普通',
+    medium: '紧急',
+    high: '特急'
   }
   return texts[priority] || '未知'
 }
@@ -278,14 +260,18 @@ const getRecordTypeText = (type: string) => {
   return texts[type] || '未知操作'
 }
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('zh-CN', {
+// 工具函数
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
-    minute: '2-digit'
-  })
+    minute: '2-digit',
+    hour12: false
+  }).replace(/\//g, '-')
 }
 </script>
 

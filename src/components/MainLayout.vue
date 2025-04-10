@@ -11,28 +11,28 @@
           class="main-menu"
           :default-active="activeRoute"
         >
-          <el-menu-item index="/">
+          <el-menu-item index="/" v-if="userStore.loginUser?.role !== USER_ROLE_ENUM.NOT_LOGIN">
             <el-icon><DataLine /></el-icon>工作台
           </el-menu-item>
-          <el-menu-item index="/repair/new">
+          <el-menu-item index="/repair/new" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.USER">
             <el-icon><Plus /></el-icon>新建报修
           </el-menu-item>
           <el-menu-item index="/knowledge">
             <el-icon><Reading /></el-icon>知识库
           </el-menu-item>
-          <el-menu-item index="/notifications">
+          <el-menu-item index="/notifications" v-if="userStore.loginUser?.role !== USER_ROLE_ENUM.NOT_LOGIN">
             <el-icon><Bell /></el-icon>消息中心
           </el-menu-item>
-          <el-menu-item index="/equipment">
+          <el-menu-item index="/equipment" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
             <el-icon><Setting /></el-icon>设备管理
           </el-menu-item>
-          <el-menu-item index="/statistics">
+          <el-menu-item index="/statistics" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
             <el-icon><TrendCharts /></el-icon>统计分析
           </el-menu-item>
-          <el-menu-item index="/ratings">
+          <el-menu-item index="/ratings" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.USER">
             <el-icon><Star /></el-icon>维修评价
           </el-menu-item>
-          <el-menu-item index="/admin">
+          <el-menu-item index="/admin" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
             <el-icon><User /></el-icon>系统管理
           </el-menu-item>
         </el-menu>
@@ -66,6 +66,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import USER_ROLE_ENUM from '../enums/USER_ROLE_ENUM'
 import { useRouter, useRoute } from 'vue-router'
 import {
   DataLine,
