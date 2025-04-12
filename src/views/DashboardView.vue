@@ -160,7 +160,8 @@ onMounted(() => {
 
 const fetchRepairs = async () => {
   const res = await getUserRepairs1();
-  repairs.value = res.data.data;
+  repairs.value = res.data.data.repairsList;
+  stats.value = res.data.data.repairsStatistics;
 };
 
 const filteredRepairs = computed(() => {

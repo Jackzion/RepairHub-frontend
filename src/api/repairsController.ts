@@ -113,7 +113,7 @@ export async function getUserRepairs1(
   params: API.getUserRepairs1Params,
   options?: { [key: string]: any }
 ) {
-  return request<API.BaseResponseListRepairs>("/repairs/getUserRepairs", {
+  return request<API.BaseResponseRepairsResVo>("/repairs/getUserRepairs", {
     method: "GET",
     params: {
       ...params,
