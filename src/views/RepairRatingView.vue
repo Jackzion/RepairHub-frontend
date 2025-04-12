@@ -65,14 +65,18 @@
       <div class="rating-list">
         <el-table :data="ratingList" style="width: 100%">
           <el-table-column prop="repairId" label="工单编号" width="120" />
-          <el-table-column prop="type" label="维修类型" width="120" />
+          <el-table-column prop="userId" label="评论者" width="120" />
           <el-table-column label="评分" width="200">
             <template #default="{ row }">
               <el-rate v-model="row.score" disabled show-score />
             </template>
           </el-table-column>
-          <el-table-column prop="comment" label="评价内容" show-overflow-tooltip />
-          <el-table-column prop="createdAt" label="评价时间" width="180" />
+          <el-table-column prop="content" label="评价内容" show-overflow-tooltip />
+          <el-table-column prop="createdAt" label="评价时间" width="180">
+            <template #default="{ row }">
+              {{ formatDateTime(row.createdAt) }}
+            </template>
+          </el-table-column>
         </el-table>
 
         <div class="pagination">
@@ -92,10 +96,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { getRatingStatistics } from '../api/ratingController'
+
+// 工具函数
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).replace(/\//g, '-')
+}
 
 // 时间范围选择
 const timeRange = ref('month')
+
+// 监听时间范围变化
+watch(timeRange, async (newValue) => {
+  fetchRatingRes()
+})
 
 // 统计数据
 const averageScore = ref(4.5)
@@ -115,6 +140,21 @@ const ratingDistribution = ref([
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(256)
+
+onMounted( async () => {
+  fetchRatingRes()
+})
+
+const fetchRatingRes = async () => {
+  const res = await getRatingStatistics({
+    timeRange: timeRange.value
+  })
+  ratingDistribution.value = res.data.data.ratingDistribution
+  averageScore.value = res.data.data.averageScore
+  totalRatings.value = res.data.data.totalRatings
+  satisfactionRate.value = res.data.data.satisfactionRate
+  ratingList.value = res.data.data.ratingsList
+}
 
 // Mock评价列表数据
 const ratingList = ref([
