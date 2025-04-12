@@ -22,9 +22,9 @@
               v-for="notification in notifications"
               :key="notification.id"
               class="notification-item"
-              :class="{ unread: !notification.read }"
+              :class="{ unread: !notification.isRead }"
             >
-              <el-badge :is-dot="!notification.read" class="notification-badge">
+              <el-badge :is-dot="!notification.isRead" class="notification-badge">
                 <div class="notification-content">
                   <div class="notification-icon">
                     <el-icon :size="24" :color="getIconColor(notification.type)">
@@ -33,8 +33,8 @@
                   </div>
                   <div class="notification-info">
                     <div class="notification-title">{{ notification.title }}</div>
-                    <div class="notification-message">{{ notification.message }}</div>
-                    <div class="notification-time">{{ notification.time }}</div>
+                    <div class="notification-content">{{ notification.content }}</div>
+                    <div class="notification-time">{{ notification.createdAt }}</div>
                   </div>
                   <div class="notification-actions">
                     <el-button link type="primary" @click="viewDetail(notification)">
@@ -67,7 +67,7 @@
                   </div>
                   <div class="notification-info">
                     <div class="notification-title">{{ notification.title }}</div>
-                    <div class="notification-message">{{ notification.message }}</div>
+                    <div class="notification-content">{{ notification.content }}</div>
                     <div class="notification-time">{{ notification.time }}</div>
                   </div>
                   <div class="notification-actions">
@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -102,58 +102,33 @@ import {
   InfoFilled,
   SuccessFilled
 } from '@element-plus/icons-vue'
+import {getMyList, setRead} from '../api/notificationController'
 
 const router = useRouter()
 const activeTab = ref('all')
 
 // Mock数据
-const notifications = ref([
-  {
-    id: 1,
-    type: 'repair_update',
-    title: '维修工单状态更新',
-    message: '您的报修工单 R2023080001 已被接单处理',
-    time: '2023-08-15 10:30',
-    read: false
-  },
-  {
-    id: 2,
-    type: 'repair_complete',
-    title: '维修完成通知',
-    message: '工单 R2023080002 已完成维修，请及时评价',
-    time: '2023-08-15 09:15',
-    read: false
-  },
-  {
-    id: 3,
-    type: 'system',
-    title: '系统通知',
-    message: '系统将于今晚22:00-23:00进行维护升级',
-    time: '2023-08-14 16:00',
-    read: true
-  },
-  {
-    id: 4,
-    type: 'warning',
-    title: '紧急通知',
-    message: '3号教学楼电梯维修中，请绕行使用其他电梯',
-    time: '2023-08-14 08:30',
-    read: true
-  }
-])
+const notifications = ref<API.Notification[]>([])
+
+onMounted( async  () => {
+  fetchNotifications()
+})
+
+const fetchNotifications = async () => {
+  const res = await getMyList()
+  notifications.value = res.data.data
+}
 
 const unreadNotifications = computed(() => {
-  return notifications.value.filter(item => !item.read)
+  return notifications.value.filter(item => !item.isRead)
 })
 
 const getIcon = (type: string) => {
   switch (type) {
-    case 'repair_update':
+    case 'repair':
       return Tools
-    case 'repair_complete':
+    case 'message':
       return SuccessFilled
-    case 'warning':
-      return Warning
     case 'system':
       return InfoFilled
     default:
@@ -163,12 +138,10 @@ const getIcon = (type: string) => {
 
 const getIconColor = (type: string) => {
   switch (type) {
-    case 'repair_update':
+    case 'repair':
       return '#409EFF'
-    case 'repair_complete':
+    case 'message':
       return '#67C23A'
-    case 'warning':
-      return '#E6A23C'
     case 'system':
       return '#909399'
     default:
@@ -176,14 +149,13 @@ const getIconColor = (type: string) => {
   }
 }
 
-const viewDetail = (notification: any) => {
-  if (notification.type.includes('repair')) {
-    // 提取工单号
-    const repairId = notification.message.match(/R\d+/)[0]
-    router.push(`/repair/${repairId}`)
-  }
+const viewDetail = async (notification: any) => {
+  // 提取工单号
+  const repairId = notification.content.match(/\d+/)[0]
+  router.push(`/repair/${repairId}`)
   // 标记为已读
-  notification.read = true
+  notification.isRead = true
+  const res = await setRead({notificationId: notification.id})
 }
 
 const deleteNotification = (id: number) => {
@@ -276,7 +248,7 @@ const clearAll = () => {
             margin-bottom: 8px;
           }
 
-          .notification-message {
+          .notification-content {
             color: #606266;
             margin-bottom: 8px;
           }

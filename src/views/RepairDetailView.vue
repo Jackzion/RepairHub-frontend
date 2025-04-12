@@ -71,7 +71,7 @@
       </div>
 
       <!-- 状态更新（仅维修人员可见） -->
-      <div class="status-update">
+      <div class="status-update" v-if="isMaintenanceStaff">
         <el-divider />
         <h3>更新状态</h3>
         <el-form :model="updateForm" :rules="updateRules" ref="updateFormRef" label-width="100px">
@@ -96,6 +96,45 @@
           </el-form-item>
         </el-form>
       </div>
+      <!-- 评价按钮和弹窗 -->
+      <div class="rating-section" v-if="repair.status === 'completed' && !isMaintenanceStaff">
+        <el-button type="primary" @click="openRatingDialog" v-if="!hasRated">
+          评价维修服务
+        </el-button>
+        <div class="rated-watermark" v-else>已评价</div>
+      </div>
+
+      <el-dialog
+        v-model="showRatingDialog"
+        title="维修服务评价"
+        width="500px"
+        class="rating-dialog"
+        :close-on-click-modal="false"
+      >
+        <el-form :model="ratingForm" :rules="ratingRules" ref="ratingFormRef" label-width="80px">
+          <el-form-item label="服务评分" prop="score" class="rating-score">
+            <el-rate
+              v-model="ratingForm.score"
+              :texts="['很差', '较差', '一般', '较好', '很好']"
+              show-text
+            />
+          </el-form-item>
+          <el-form-item label="评价内容" prop="comment">
+            <el-input
+              v-model="ratingForm.comment"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入您的评价内容（选填）"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <div class="dialog-footer">
+            <el-button @click="showRatingDialog = false">取消</el-button>
+            <el-button type="primary" @click="handleSubmitRating">提交评价</el-button>
+          </div>
+        </template>
+      </el-dialog>
     </el-card>
   </div>
 </template>
@@ -108,13 +147,15 @@ import type { FormInstance } from 'element-plus'
 import { useLoginUserStore } from '../stores/user'
 import { getRepairsById , updateRepairStatus} from '../api/repairsController'
 import { getRepairRecords, addRecord } from '../api/repairRecordsController'
+import { addRating, isExistRating } from '../api/ratingController'
+import USER_ROLE_ENUM from '../enums/USER_ROLE_ENUM'
 
 const route = useRoute()
 const router = useRouter()
 const loginUser = useLoginUserStore()
 
 // 判断是否为维修人员
-const isMaintenanceStaff = loginUser.loginUser?.role === 'maintainer'
+const isMaintenanceStaff = loginUser.loginUser?.role === USER_ROLE_ENUM.MAINTAINER
 
 // 报修信息
 const repair = ref<API.Repairs>({})
@@ -154,6 +195,9 @@ const fetchRepairDetail = async () => {
     if (recordsRes.data.code === 0 && recordsRes.data.data) {
       records.value = recordsRes.data.data.records || []
     }
+    // 判断是否已经评论
+    const ratingRes = await isExistRating({ repairId: repair.value.id })
+    hasRated.value = ratingRes.data.code === 0 && ratingRes.data.data
   } catch (error) {
     console.error('获取报修详情失败:', error)
     ElMessage.error('获取报修详情失败')
@@ -273,6 +317,50 @@ const formatDateTime = (dateStr: string) => {
     hour12: false
   }).replace(/\//g, '-')
 }
+
+// 评价相关状态
+const showRatingDialog = ref(false)
+const ratingForm = ref({
+  score: 0,
+  comment: ''
+})
+const ratingRules = {
+  score: [{ required: true, message: '请选择评分', trigger: 'change' }],
+  comment: [{ required: false, message: '请输入评价内容', trigger: 'blur' }]
+}
+const ratingFormRef = ref<FormInstance>()
+const hasRated = ref(false)
+
+// 打开评价弹窗
+const openRatingDialog = () => {
+  showRatingDialog.value = true
+}
+
+// 提交评价
+const handleSubmitRating = async () => {
+  if (!ratingFormRef.value) return
+  
+  await ratingFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      try {
+        // TODO: 调用评价接口
+        const res = await addRating({
+          repairId: repair.value.id,
+          score: ratingForm.value.score,
+          comment: ratingForm.value.comment,
+          userId: loginUser.loginUser?.id
+        })
+        console.log('提交评价:', ratingForm.value)
+        hasRated.value = true
+        showRatingDialog.value = false
+        ElMessage.success('评价成功')
+      } catch (error) {
+        console.error('评价失败:', error)
+        ElMessage.error('评价失败')
+      }
+    }
+  })
+}
 </script>
 
 <style scoped lang="scss">
@@ -337,6 +425,80 @@ const formatDateTime = (dateStr: string) => {
 
   .w-full {
     width: 100%;
+  }
+}
+
+.rating-section {
+  position: relative;
+  margin-top: 24px;
+  text-align: center;
+  min-height: 40px;
+
+  .rated-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 48px;
+    color: rgba(#909399, 0.2);
+    font-weight: bold;
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+.rating-dialog {
+  :deep(.el-dialog__body) {
+    padding-top: 20px;
+  }
+
+  .rating-score {
+    :deep(.el-rate) {
+      margin-top: 8px;
+    }
+  }
+
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+}
+
+.rating-section {
+  position: relative;
+  margin-top: 24px;
+  text-align: center;
+  min-height: 40px;
+
+  .rated-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 48px;
+    color: rgba(#909399, 0.2);
+    font-weight: bold;
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+.rating-dialog {
+  :deep(.el-dialog__body) {
+    padding-top: 20px;
+  }
+
+  .rating-score {
+    :deep(.el-rate) {
+      margin-top: 8px;
+    }
+  }
+
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
   }
 }
 </style>
