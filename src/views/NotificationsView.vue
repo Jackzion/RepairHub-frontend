@@ -74,7 +74,7 @@
                     <el-button link type="primary" @click="viewDetail(notification)">
                       查看详情
                     </el-button>
-                    <el-button link type="danger" @click="deleteNotification(notification.id)">
+                    <el-button link type="danger" @click="removeNotification(notification)">
                       删除
                     </el-button>
                   </div>
@@ -102,7 +102,7 @@ import {
   InfoFilled,
   SuccessFilled
 } from '@element-plus/icons-vue'
-import {getMyList, setRead} from '../api/notificationController'
+import {getMyList, setRead , deleteNotification, setReadAll, deleteAll } from '../api/notificationController'
 
 const router = useRouter()
 const activeTab = ref('all')
@@ -158,33 +158,25 @@ const viewDetail = async (notification: any) => {
   const res = await setRead({notificationId: notification.id})
 }
 
-const deleteNotification = (id: number) => {
-  ElMessageBox.confirm('确定要删除这条消息吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    notifications.value = notifications.value.filter(item => item.id !== id)
-    ElMessage.success('删除成功')
-  })
+const removeNotification = async (notification: any) => {
+  notifications.value = notifications.value.filter(item => item.id !== notification.id)
+  // 调用删除接口
+  const res = await deleteNotification({notificationId: notification.id})
+  ElMessage.success('删除成功')
 }
 
-const markAllRead = () => {
+const markAllRead = async () => {
   notifications.value.forEach(item => {
-    item.read = true
+    item.isRead = true
   })
+  const res = await setReadAll()
   ElMessage.success('已全部标记为已读')
 }
 
-const clearAll = () => {
-  ElMessageBox.confirm('确定要清空所有消息吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    notifications.value = []
-    ElMessage.success('清空成功')
-  })
+const clearAll = async () => {
+  notifications.value = []
+  const res = await deleteAll()
+  ElMessage.success('清空成功')
 }
 </script>
 
