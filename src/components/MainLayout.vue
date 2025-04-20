@@ -29,8 +29,11 @@
           <el-menu-item index="/statistics" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
             <el-icon><TrendCharts /></el-icon>统计分析
           </el-menu-item>
+          <el-menu-item index="/ratings" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN || userStore.loginUser?.role === USER_ROLE_ENUM.MAINTAINER">
+            <el-icon><Star /></el-icon>评价统计
+          </el-menu-item>
           <el-menu-item index="/ratings" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.USER">
-            <el-icon><Star /></el-icon>维修评价
+            <el-icon><Star /></el-icon>我的评价
           </el-menu-item>
           <el-menu-item index="/admin" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
             <el-icon><User /></el-icon>系统管理

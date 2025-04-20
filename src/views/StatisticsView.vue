@@ -38,7 +38,7 @@
             </div>
           </template>
           <div class="pie-chart-container">
-            <div class="chart-placeholder">此处显示饼图</div>
+            <v-chart class="chart" :option="pieChartOption" :autoresize="true" />
             <div class="chart-legend">
               <div v-for="item in repairTypeData" :key="item.type" class="legend-item">
                 <span class="legend-color" :style="{ backgroundColor: item.color }"></span>
@@ -72,31 +72,255 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { CaretTop, CaretBottom } from '@element-plus/icons-vue'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { PieChart } from 'echarts/charts'
+import { LegendComponent, TooltipComponent, GridComponent, TitleComponent } from 'echarts/components'
+import VChart from 'vue-echarts'
+import { getRepairRatingVo } from '../api/repairsController'
+
+use([
+  CanvasRenderer,
+  PieChart,
+  LegendComponent,
+  TooltipComponent,
+  GridComponent,
+  TitleComponent
+])
 
 const timeRange = ref('month')
 
-// Mock数据
-const workloadStats = ref([
-  { title: '总维修工单', value: 256, percentage: '+15%', trend: 'up' },
-  { title: '平均处理时间', value: '2.5小时', percentage: '-10%', trend: 'down' },
-  { title: '满意度评分', value: '4.8', percentage: '+5%', trend: 'up' }
+// Mock数据 - 模拟接口返回的原始数据
+const repairRecords = ref([
+  { id: 1, type: '投影仪', priority: 'high', creatorId: 6, maintainerName: '张伟', score: 4.5, createdAt: '2025-03-14T01:00:00.000+00:00', updatedAt: '2025-04-12T05:19:22.000+00:00' },
+  { id: 2, type: '空调', priority: 'medium', creatorId: 7, maintainerName: '张伟', score: 5, createdAt: '2025-03-13T06:30:00.000+00:00', updatedAt: '2025-03-15T12:44:37.000+00:00' },
+  { id: 3, type: '电脑', priority: 'low', creatorId: 6, maintainerName: '刘强', score: 5, createdAt: '2025-03-12T02:15:00.000+00:00', updatedAt: '2025-03-15T12:44:37.000+00:00' },
+  { id: 4, type: '水龙头', priority: 'high', creatorId: 8, maintainerName: '李明', score: 4.8, createdAt: '2025-03-14T05:00:00.000+00:00', updatedAt: '2025-03-15T12:44:37.000+00:00' },
+  { id: 5, type: '电灯', priority: 'medium', creatorId: 9, maintainerName: '王华', score: 4.2, createdAt: '2025-03-14T07:30:00.000+00:00', updatedAt: '2025-03-15T12:44:37.000+00:00' },
+  { id: 6, type: '打印机', priority: 'low', creatorId: 10, maintainerName: '张伟', score: 5, createdAt: '2025-03-13T01:45:00.000+00:00', updatedAt: '2025-03-15T12:44:37.000+00:00' },
+  { id: 7, type: '椅子', priority: 'low', creatorId: 6, maintainerName: '刘强', score: 4.6, createdAt: '2025-03-14T03:00:00.000+00:00', updatedAt: '2025-03-15T12:44:37.000+00:00' },
+  { id: 8, type: '门锁', priority: 'high', creatorId: 7, maintainerName: '李明', score: 4.9, createdAt: '2025-03-15T00:00:00.000+00:00', updatedAt: '2025-04-20T07:24:44.000+00:00' },
+  { id: 9, type: '空调', priority: 'low', creatorId: 2, maintainerName: '王华', score: 4.7, createdAt: '2025-03-15T13:27:57.000+00:00', updatedAt: '2025-04-12T05:19:22.000+00:00' },
+  { id: 10, type: '空调', priority: 'medium', creatorId: 13, maintainerName: '张伟', score: 5, createdAt: '2025-04-12T06:47:03.000+00:00', updatedAt: '2025-04-12T06:47:03.000+00:00' }
 ])
 
-const repairTypeData = ref([
-  { type: '空调维修', percentage: 35, color: '#409EFF' },
-  { type: '电路维修', percentage: 25, color: '#67C23A' },
-  { type: '水管维修', percentage: 20, color: '#E6A23C' },
-  { type: '其他设备', percentage: 20, color: '#F56C6C' }
-])
+onMounted( async () => {
+  // 获取数据并更新图表
+  const res = await getRepairRatingVo();
+  repairRecords.value = res.data.data;
+})
 
-const ratingStats = ref([
-  { maintainer: '张三', completedCount: 45, avgRating: 4.8 },
-  { maintainer: '李四', completedCount: 38, avgRating: 4.6 },
-  { maintainer: '王五', completedCount: 42, avgRating: 4.7 },
-  { maintainer: '赵六', completedCount: 35, avgRating: 4.5 }
-])
+// 计算工作量统计数据
+const workloadStats = computed(() => {
+  // 根据时间范围筛选当前时间段数据
+  const now = new Date()
+  const currentRecords = repairRecords.value.filter(record => {
+    const recordDate = new Date(record.createdAt)
+    if (timeRange.value === 'week') {
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay())
+      startOfWeek.setHours(0, 0, 0, 0)
+      return recordDate >= startOfWeek
+    } else if (timeRange.value === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      return recordDate >= startOfMonth
+    } else { // year
+      const startOfYear = new Date(now.getFullYear(), 0, 1)
+      return recordDate >= startOfYear
+    }
+  })
+
+  // 计算上一时间段的数据
+  const previousRecords = repairRecords.value.filter(record => {
+    const recordDate = new Date(record.createdAt)
+    if (timeRange.value === 'week') {
+      const startOfLastWeek = new Date(now)
+      startOfLastWeek.setDate(now.getDate() - now.getDay() - 7)
+      const endOfLastWeek = new Date(now)
+      endOfLastWeek.setDate(now.getDate() - now.getDay())
+      return recordDate >= startOfLastWeek && recordDate < endOfLastWeek
+    } else if (timeRange.value === 'month') {
+      const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+      return recordDate >= startOfLastMonth && recordDate <= endOfLastMonth
+    } else { // year
+      const startOfLastYear = new Date(now.getFullYear() - 1, 0, 1)
+      const endOfLastYear = new Date(now.getFullYear() - 1, 11, 31)
+      return recordDate >= startOfLastYear && recordDate <= endOfLastYear
+    }
+  })
+
+  // 计算当前时间段的统计数据
+  const currentTotalOrders = currentRecords.length
+  const currentCompletedOrders = currentRecords.filter(record => record.status === 'completed').length || 0
+  const currentAvgScore = currentCompletedOrders > 0
+    ? (currentRecords.filter(record => record.score !== null).reduce((sum, record) => sum + (record.score || 0), 0) / currentCompletedOrders)
+    : 0
+
+  // 计算上一时间段的统计数据
+  const previousTotalOrders = previousRecords.length
+  const previousCompletedOrders = previousRecords.filter(record => record.status === 'completed').length || 0
+  const previousAvgScore = previousCompletedOrders > 0
+    ? (previousRecords.filter(record => record.score !== null).reduce((sum, record) => sum + (record.score || 0), 0) / previousCompletedOrders)
+    : 0
+
+  // 计算同比变化率
+  const calculatePercentageChange = (current, previous) => {
+    if (previous === 0) return current > 0 ? '+100%' : '0%'
+    const change = ((current - previous) / previous) * 100
+    const cappedChange = Math.max(Math.min(change, 100), -100)
+    return `${cappedChange > 0 ? '+' : ''}${cappedChange.toFixed(1)}%`
+  }
+
+  const currentCompletionRate = currentTotalOrders > 0 ? (currentCompletedOrders / currentTotalOrders) * 100 : 0
+  const previousCompletionRate = previousTotalOrders > 0 ? (previousCompletedOrders / previousTotalOrders) * 100 : 0
+
+  const periodText = timeRange.value === 'week' ? '上周' : timeRange.value === 'month' ? '上月' : '去年'
+  
+  return [
+    { 
+      title: '总维修工单', 
+      value: currentTotalOrders, 
+      percentage: calculatePercentageChange(currentTotalOrders, previousTotalOrders),
+      trend: currentTotalOrders >= previousTotalOrders ? 'up' : 'down',
+      comparison: `较${periodText}${previousTotalOrders}单`
+    },
+    { 
+      title: '完成率', 
+      value: currentTotalOrders > 0 ? `${Math.round(currentCompletionRate)}%` : '0%',
+      percentage: calculatePercentageChange(currentCompletionRate, previousCompletionRate),
+      trend: currentCompletionRate >= previousCompletionRate ? 'up' : 'down',
+      comparison: `较${periodText}${Math.round(previousCompletionRate)}%`
+    },
+    { 
+      title: '满意度评分', 
+      value: currentAvgScore.toFixed(1),
+      percentage: calculatePercentageChange(currentAvgScore, previousAvgScore),
+      trend: currentAvgScore >= previousAvgScore ? 'up' : 'down',
+      comparison: `较${periodText}${previousAvgScore.toFixed(1)}分`
+    }
+  ]
+})
+
+// 计算维修类型分布数据
+const repairTypeData = computed(() => {
+  const typeCount = {}
+  let totalCount = 0
+  
+  // 根据时间范围筛选数据
+  const now = new Date()
+  const filteredRecords = repairRecords.value.filter(record => {
+    const recordDate = new Date(record.createdAt)
+    if (timeRange.value === 'week') {
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay())
+      startOfWeek.setHours(0, 0, 0, 0)
+      return recordDate >= startOfWeek
+    } else if (timeRange.value === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      return recordDate >= startOfMonth
+    } else { // year
+      const startOfYear = new Date(now.getFullYear(), 0, 1)
+      return recordDate >= startOfYear
+    }
+  })
+
+  filteredRecords.forEach(record => {
+    if (record.type) {
+      typeCount[record.type] = (typeCount[record.type] || 0) + 1
+      totalCount++
+    }
+  })
+  
+  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399']
+  return Object.entries(typeCount).map(([type, count], index) => ({
+    type,
+    value: count,
+    percentage: totalCount > 0 ? Math.round(count / totalCount * 100) : 0,
+    color: colors[index % colors.length]
+  }))
+})
+
+// 配置饼图选项
+const pieChartOption = computed(() => ({
+  tooltip: {
+    trigger: 'item',
+    formatter: '{b}: {c} ({d}%)'
+  },
+  series: [{
+    type: 'pie',
+    radius: ['50%', '70%'],
+    center: ['50%', '50%'],
+    data: repairTypeData.value.map(item => ({
+      name: item.type,
+      value: item.value,
+      itemStyle: {
+        color: item.color
+      }
+    })),
+    emphasis: {
+      itemStyle: {
+        shadowBlur: 10,
+        shadowOffsetX: 0,
+        shadowColor: 'rgba(0, 0, 0, 0.5)'
+      }
+    },
+    label: {
+      show: false
+    },
+    labelLine: {
+      show: false
+    }
+  }]
+}))
+
+// 计算维修人员评分统计
+const ratingStats = computed(() => {
+  const maintainerStats = {}
+  
+  // 根据时间范围筛选数据
+  const now = new Date()
+  const filteredRecords = repairRecords.value.filter(record => {
+    const recordDate = new Date(record.createdAt)
+    if (timeRange.value === 'week') {
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay())
+      startOfWeek.setHours(0, 0, 0, 0)
+      return recordDate >= startOfWeek
+    } else if (timeRange.value === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      return recordDate >= startOfMonth
+    } else { // year
+      const startOfYear = new Date(now.getFullYear(), 0, 1)
+      return recordDate >= startOfYear
+    }
+  })
+
+  filteredRecords.forEach(record => {
+    if (!record.maintainerName) return
+    if (!maintainerStats[record.maintainerName]) {
+      maintainerStats[record.maintainerName] = {
+        maintainer: record.maintainerName,
+        completedCount: 0,
+        ratedCount: 0,
+        totalScore: 0
+      }
+    }
+    maintainerStats[record.maintainerName].completedCount++
+    if (record.score !== null && record.score !== undefined) {
+      maintainerStats[record.maintainerName].ratedCount++
+      maintainerStats[record.maintainerName].totalScore += record.score
+    }
+  })
+  
+  return Object.values(maintainerStats).map(stat => ({
+    maintainer: stat.maintainer,
+    completedCount: stat.completedCount,
+    avgRating: stat.ratedCount > 0 ? (stat.totalScore / stat.ratedCount).toFixed(1) : '0.0'
+  })).sort((a, b) => parseFloat(b.avgRating) - parseFloat(a.avgRating))
+})
 </script>
 
 <style scoped lang="scss">
@@ -159,18 +383,16 @@ const ratingStats = ref([
   .pie-chart-container {
     display: flex;
     min-height: 300px;
+    padding: 20px;
 
-    .chart-placeholder {
+    .chart {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #909399;
+      min-height: 300px;
     }
 
     .chart-legend {
       width: 150px;
-      padding: 20px;
+      padding-left: 20px;
 
       .legend-item {
         display: flex;

@@ -92,6 +92,17 @@ export async function getRepairsById(
   });
 }
 
+/** 此处后端没有提供注释 GET /repairs/getRepairRatingVo */
+export async function getRepairRatingVo(options?: { [key: string]: any }) {
+  return request<API.BaseResponseListRepairRatingVo>(
+    "/repairs/getRepairRatingVo",
+    {
+      method: "GET",
+      ...(options || {}),
+    }
+  );
+}
+
 /** 此处后端没有提供注释 GET /repairs/getRepairRecord */
 export async function getRepairRecord(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

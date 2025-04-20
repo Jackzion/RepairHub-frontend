@@ -552,7 +552,7 @@ const deleteEquipment = async (row) => {
     console.error(error)
   }
 }
-</script>
+</script> 
 
 <style scoped lang="scss">
 .equipment-container {
