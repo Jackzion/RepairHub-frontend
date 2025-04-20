@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import RepairRatingView from '../views/RepairRatingView.vue';
+import EquipmentDetailView from '../views/EquipmentDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,6 +46,15 @@ const router = createRouter({
       name: 'equipment',
       component: () => import('../views/EquipmentView.vue'),
       meta: { requiresAuth: false, requiresAdmin: false }
+    },
+    {
+      path: '/equipment/:id',
+      name: 'equipment-detail',
+      component: EquipmentDetailView,
+      meta: {
+        requiresAuth: true,
+        roles: ['admin', 'maintainer']
+      }
     },
     {
       path: '/statistics',

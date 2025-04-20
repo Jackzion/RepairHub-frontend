@@ -6,15 +6,17 @@ import * as repairsController from "./repairsController";
 import * as repairRecordsController from "./repairRecordsController";
 import * as ratingController from "./ratingController";
 import * as notificationController from "./notificationController";
+import * as equipmentTypesController from "./equipmentTypesController";
+import * as equipmentController from "./equipmentController";
 import * as userController from "./userController";
 import * as locationController from "./locationController";
-import * as equipmentTypesController from "./equipmentTypesController";
 export default {
   repairsController,
   repairRecordsController,
   ratingController,
   notificationController,
+  equipmentTypesController,
+  equipmentController,
   userController,
   locationController,
-  equipmentTypesController,
 };

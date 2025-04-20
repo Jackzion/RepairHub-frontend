@@ -23,7 +23,7 @@
           <el-menu-item index="/notifications" v-if="userStore.loginUser?.role !== USER_ROLE_ENUM.NOT_LOGIN">
             <el-icon><Bell /></el-icon>消息中心
           </el-menu-item>
-          <el-menu-item index="/equipment" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
+          <el-menu-item index="/equipment" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN || userStore.loginUser?.role === USER_ROLE_ENUM.MAINTAINER">
             <el-icon><Setting /></el-icon>设备管理
           </el-menu-item>
           <el-menu-item index="/statistics" v-if="userStore.loginUser?.role === USER_ROLE_ENUM.ADMIN">
