@@ -191,24 +191,25 @@ const loadUsers = async () => {
 // 初始化加载
 onMounted(() => {
   loadUsers()
+  loadLogs()
 })
 
 const filteredUsers = computed(() => users.value)
 
 const getRoleTagType = (role: string) => {
-  const types: Record<string, string> = {
-    admin: 'danger',
-    maintainer: 'warning',
-    user: 'info'
+  const types: Record<number, string> = {
+    2: 'danger',
+    3: 'warning',
+    1: 'info'
   }
   return types[role] || 'info'
 }
 
 const getRoleText = (role: string) => {
-  const texts: Record<string, string> = {
-    admin: '管理员',
-    maintainer: '维修人员',
-    user: '普通用户'
+  const texts: Record<number, string> = {
+    2: '管理员',
+    3: '维修人员',
+    1: '普通用户'
   }
   return texts[role] || '未知角色'
 }

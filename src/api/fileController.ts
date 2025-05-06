@@ -17,14 +17,18 @@ export async function testDownloadFile(
   });
 }
 
-/** 此处后端没有提供注释 POST /file/test/upload */
-export async function testUpload(body: {}, options?: { [key: string]: any }) {
-  return request<API.BaseResponseString>("/file/test/upload", {
-    method: "POST",
+/** 上传测试接口（后端需要补上这个路由） */
+export async function testUpload(
+  formData: FormData, // 改为接收FormData
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseString>('/file/test/upload', {
+    method: 'POST',
+    // 删除手动设置的Content-Type，让浏览器自动生成
     headers: {
-      "Content-Type": "application/json",
+      ...(options?.headers || {}),
     },
-    data: body,
+    data: formData, // 直接传递FormData对象
     ...(options || {}),
   });
 }
