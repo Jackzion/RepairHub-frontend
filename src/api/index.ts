@@ -9,6 +9,8 @@ import * as notificationController from "./notificationController";
 import * as equipmentTypesController from "./equipmentTypesController";
 import * as equipmentController from "./equipmentController";
 import * as userController from "./userController";
+import * as fileController from "./fileController";
+import * as systemLogController from "./systemLogController";
 import * as locationController from "./locationController";
 export default {
   repairsController,
@@ -18,5 +20,7 @@ export default {
   equipmentTypesController,
   equipmentController,
   userController,
+  fileController,
+  systemLogController,
   locationController,
 };

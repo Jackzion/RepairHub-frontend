@@ -101,13 +101,14 @@ import { getAllLocations } from '../api/locationController';
 import { getEquipmentTypes } from '../api/equipmentTypesController';
 import { useLoginUserStore } from '../stores/user';
 import { submitRepair } from '../api/repairsController';
+import { testUpload } from '../api/fileController';
 
 const router = useRouter();
 const repairFormRef = ref();
 const loading = ref(false);
 const fileList = ref<UploadFile[]>([]);
-const userSotre = useLoginUserStore() 
-
+const uploadedImages = ref<string[]>([]);
+const userSotre = useLoginUserStore();
 
 const repairForm = reactive<API.RepairsSubmitRequest>({
   type: '',
@@ -117,6 +118,80 @@ const repairForm = reactive<API.RepairsSubmitRequest>({
   description: '',
   creatorId: userSotre.loginUser?.id,
 });
+
+const handleFileChange = async (uploadFile: UploadFile) => {
+  const isImage = uploadFile.raw?.type.startsWith('image/');
+  const isLt2M = uploadFile.raw?.size ? uploadFile.raw.size / 1024 / 1024 < 2 : false;
+
+  if (!isImage) {
+    ElMessage.error('只能上传图片文件！');
+    return false;
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB！');
+    return false;
+  }
+
+  if (uploadFile.raw) {
+    try {
+      loading.value = true;
+      const formData = new FormData();
+      formData.append('file', uploadFile.raw);
+      
+      const res = await testUpload(formData);
+      if (res.data.code === 0 && res.data.data) {
+        uploadedImages.value.push(res.data.data);
+        ElMessage.success('图片上传成功');
+      } else {
+        ElMessage.error(res.data.message || '图片上传失败');
+      }
+    } catch (error) {
+      console.error('图片上传失败:', error);
+      ElMessage.error('图片上传失败，请重试');
+    } finally {
+      loading.value = false;
+    }
+  }
+  return true;
+};
+
+const handleSubmit = async () => {
+  if (!repairFormRef.value) return;
+
+  await repairFormRef.value.validate(async (valid: boolean) => {
+    if (valid) {
+      loading.value = true;
+      try {
+        const locationData = {
+          area: repairForm.location[0] || '',
+          building: repairForm.location[1] || '',
+          floor: repairForm.location[2] || ''
+        };
+
+        const repairData = {
+          ...repairForm,
+          location: JSON.stringify(locationData),
+          status: 'pending',
+          images: JSON.stringify(uploadedImages.value),
+          creatorId: userSotre.loginUser?.id
+        };
+
+        const res = await submitRepair(repairData);
+        if (res.data.code === 0) {
+          ElMessage.success('报修提交成功');
+          router.push('/');
+        } else {
+          ElMessage.error(res.data.message || '提交失败');
+        }
+      } catch (error) {
+        console.error('提交报修失败:', error);
+        ElMessage.error('提交失败，请重试');
+      } finally {
+        loading.value = false;
+      }
+    }
+  });
+};
 
 const locationOptions = ref([]);
 
@@ -173,72 +248,6 @@ const repairRules = {
   locationDetail: [{ required: true, message: '请输入详细位置', trigger: 'blur' }],
   priority: [{ required: true, message: '请选择紧急程度', trigger: 'change' }],
   description: [{ required: true, message: '请描述问题', trigger: 'blur' }]
-};
-
-const handleFileChange = (uploadFile: UploadFile) => {
-  const isImage = uploadFile.raw?.type.startsWith('image/');
-  const isLt2M = uploadFile.raw?.size ? uploadFile.raw.size / 1024 / 1024 < 2 : false;
-
-  if (!isImage) {
-    ElMessage.error('只能上传图片文件！');
-    return false;
-  }
-  if (!isLt2M) {
-    ElMessage.error('图片大小不能超过 2MB！');
-    return false;
-  }
-  return true;
-};
-
-const handleSubmit = async () => {
-  if (!repairFormRef.value) return;
-
-  await repairFormRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      loading.value = true;
-      try {
-        // 准备表单数据
-        const formData = new FormData();
-        
-        // 转换位置信息为指定格式
-        const locationData = {
-          area: repairForm.location[0] || '',
-          building: repairForm.location[1] || '',
-          floor: repairForm.location[2] || ''
-        };
-
-        // 添加基本信息
-        const repairData = {
-          ...repairForm,
-          location: JSON.stringify(locationData),
-          status: 'pending',
-          images: JSON.stringify(["https://zh.wikipedia.org/wiki/Bing_Maps#/media/File:Bing_Fluent_Logo_Text.svg"]),
-          creatorId: userSotre.loginUser?.id
-        };
-        
-        // 添加图片
-        // fileList.value.forEach((file: UploadFile) => {
-        //   if (file.raw) {
-        //     formData.append('images', file.raw);
-        //   }
-        // });
-
-        // 提交报修
-        const res = await submitRepair(repairData);
-        if (res.data.code === 0) {
-          ElMessage.success('报修提交成功');
-          router.push('/');
-        } else {
-          ElMessage.error(res.data.message || '提交失败');
-        }
-      } catch (error) {
-        console.error('提交报修失败:', error);
-        ElMessage.error('提交失败，请重试');
-      } finally {
-        loading.value = false;
-      }
-    }
-  });
 };
 
 const equipmentOptions = ref([]);

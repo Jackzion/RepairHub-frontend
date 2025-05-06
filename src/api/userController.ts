@@ -2,6 +2,21 @@
 /* eslint-disable */
 import request from "@/axioss/request";
 
+/** 此处后端没有提供注释 POST /user/add */
+export async function addUser(
+  body: API.AddUserRequest,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>("/user/add", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** 此处后端没有提供注释 POST /user/ban */
 export async function banUser(
   body: API.BanUserRequest,
@@ -44,6 +59,21 @@ export async function userLogin(
 export async function userLogout(options?: { [key: string]: any }) {
   return request<API.BaseResponseBoolean>("/user/logout", {
     method: "POST",
+    ...(options || {}),
+  });
+}
+
+/** 此处后端没有提供注释 GET /user/page */
+export async function getUserPage(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getUserPageParams,
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseIPageUsers>("/user/page", {
+    method: "GET",
+    params: {
+      ...params,
+    },
     ...(options || {}),
   });
 }

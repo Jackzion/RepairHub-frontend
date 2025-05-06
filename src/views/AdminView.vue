@@ -7,10 +7,6 @@
           class="admin-menu"
           @select="handleMenuSelect"
         >
-          <el-menu-item index="dashboard">
-            <el-icon><DataLine /></el-icon>
-            <span>数据统计</span>
-          </el-menu-item>
           <el-menu-item index="users">
             <el-icon><User /></el-icon>
             <span>用户管理</span>
@@ -26,59 +22,6 @@
         <div class="admin-header">
           <h2>{{ pageTitle }}</h2>
         </div>
-
-        <!-- 数据统计面板 -->
-        <template v-if="activeMenu === 'dashboard'">
-          <el-row :gutter="20" class="dashboard-stats">
-            <el-col :span="8" v-for="stat in statsData" :key="stat.title">
-              <el-card shadow="hover">
-                <template #header>
-                  <div class="card-header">
-                    <span>{{ stat.title }}</span>
-                    <el-tag :type="stat.type">{{ stat.value }}</el-tag>
-                  </div>
-                </template>
-                <div class="card-content">
-                  <el-progress
-                    type="dashboard"
-                    :percentage="stat.percentage"
-                    :status="stat.status"
-                  />
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-
-          <!-- 趋势图表 -->
-          <el-row :gutter="20" class="chart-section">
-            <el-col :span="12">
-              <el-card shadow="hover">
-                <template #header>
-                  <div class="card-header">
-                    <span>报修趋势</span>
-                  </div>
-                </template>
-                <div class="chart-container">
-                  <!-- TODO: 集成图表组件 -->
-                  <div class="chart-placeholder">报修数量趋势图</div>
-                </div>
-              </el-card>
-            </el-col>
-            <el-col :span="12">
-              <el-card shadow="hover">
-                <template #header>
-                  <div class="card-header">
-                    <span>设备类型分布</span>
-                  </div>
-                </template>
-                <div class="chart-container">
-                  <!-- TODO: 集成图表组件 -->
-                  <div class="chart-placeholder">设备类型饼图</div>
-                </div>
-              </el-card>
-            </el-col>
-          </el-row>
-        </template>
 
         <!-- 用户管理 -->
         <template v-if="activeMenu === 'users'">
@@ -162,7 +105,7 @@
             </div>
 
             <el-table :data="filteredLogs" style="width: 100%">
-              <el-table-column prop="timestamp" label="时间" width="180" />
+              <el-table-column prop="createdAt" label="时间" width="180" />
               <el-table-column prop="type" label="类型" width="100">
                 <template #default="{ row }">
                   <el-tag :type="getLogTypeTag(row.type)">
@@ -171,7 +114,8 @@
                 </template>
               </el-table-column>
               <el-table-column prop="content" label="内容" />
-              <el-table-column prop="operator" label="操作人" width="120" />
+              <el-table-column prop="operatorId" label="操作者ID" width="120" />
+              <el-table-column prop="ip" label="IP地址" width="140" />
             </el-table>
 
             <div class="pagination-container">
@@ -193,21 +137,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  DataLine,
   User,
   Document,
   Search,
   Plus
 } from '@element-plus/icons-vue'
+import { getUserPage, addUser, updateUser, banUser } from '../api/userController'
+import { getSystemLogPage } from '../api/systemLogController'
+import { watch } from 'vue'
+import dayjs from 'dayjs'
 
 // 菜单激活状态
-const activeMenu = ref('dashboard')
+const activeMenu = ref('users')
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
-    dashboard: '数据统计',
     users: '用户管理',
     logs: '系统日志'
   }
@@ -218,64 +164,36 @@ const handleMenuSelect = (index: string) => {
   activeMenu.value = index
 }
 
-// 数据统计
-const statsData = ref([
-  {
-    title: '总用户数',
-    value: 150,
-    percentage: 85,
-    type: 'primary',
-    status: 'success'
-  },
-  {
-    title: '本月报修',
-    value: 48,
-    percentage: 65,
-    type: 'warning',
-    status: 'warning'
-  },
-  {
-    title: '完成率',
-    value: '92%',
-    percentage: 92,
-    type: 'success',
-    status: 'success'
-  }
-])
-
 // 用户管理
 const userSearch = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalUsers = ref(0)
+const users = ref<API.Users[]>([])
 
-// 模拟用户数据
-const users = ref([
-  {
-    id: 1,
-    name: '管理员',
-    role: 'admin',
-    createdAt: '2024-01-01 12:00:00'
-  },
-  {
-    id: 2,
-    name: '维修人员1',
-    role: 'maintainer',
-    createdAt: '2024-01-02 12:00:00'
-  },
-  {
-    id: 3,
-    name: '用户1',
-    role: 'user',
-    createdAt: '2024-01-03 12:00:00'
+// 加载用户数据
+const loadUsers = async () => {
+  try {
+    const res = await getUserPage({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      search: userSearch.value
+    })
+    if (res.data) {
+      users.value = res.data.data.records
+      totalUsers.value = res.data.data.total
+    }
+  } catch (error) {
+    ElMessage.error('获取用户列表失败')
   }
-])
+}
 
-const filteredUsers = computed(() => {
-  return users.value.filter(user =>
-    user.name.toLowerCase().includes(userSearch.value.toLowerCase())
-  )
+// 初始化加载
+onMounted(() => {
+  loadUsers()
 })
+
+const filteredUsers = computed(() => users.value)
 
 const getRoleTagType = (role: string) => {
   const types: Record<string, string> = {
@@ -295,17 +213,39 @@ const getRoleText = (role: string) => {
   return texts[role] || '未知角色'
 }
 
-const handleAddUser = () => {
-  // TODO: 实现添加用户逻辑
-  ElMessage.info('添加用户功能开发中')
+const handleAddUser = async () => {
+  try {
+    const result = await addUser({
+      username: 'new_user',  // 这里需要添加用户表单
+      password: '123456',
+      role: 'user'
+    })
+    if (result.data) {
+      ElMessage.success('添加用户成功')
+      loadUsers()
+    }
+  } catch (error) {
+    ElMessage.error('添加用户失败')
+  }
 }
 
-const handleEditUser = (user: any) => {
-  // TODO: 实现编辑用户逻辑
-  ElMessage.info('编辑用户功能开发中')
+const handleEditUser = async (user: API.Users) => {
+  try {
+    const result = await updateUser({
+      id: user.id,
+      username: user.username,
+      role: user.role
+    })
+    if (result.data) {
+      ElMessage.success('更新用户成功')
+      loadUsers()
+    }
+  } catch (error) {
+    ElMessage.error('更新用户失败')
+  }
 }
 
-const handleDeleteUser = (user: any) => {
+const handleDeleteUser = (user: API.Users) => {
   ElMessageBox.confirm(
     '确定要删除该用户吗？此操作不可恢复。',
     '警告',
@@ -314,9 +254,16 @@ const handleDeleteUser = (user: any) => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    // TODO: 实现删除用户逻辑
-    ElMessage.success('用户删除成功')
+  ).then(async () => {
+    try {
+      const result = await banUser({ id: user.id })
+      if (result.data) {
+        ElMessage.success('用户删除成功')
+        loadUsers()
+      }
+    } catch (error) {
+      ElMessage.error('删除用户失败')
+    }
   }).catch(() => {
     ElMessage.info('已取消删除')
   })
@@ -324,50 +271,48 @@ const handleDeleteUser = (user: any) => {
 
 const handleSizeChange = (val: number) => {
   pageSize.value = val
-  // TODO: 重新加载用户数据
+  loadUsers()
 }
 
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
-  // TODO: 重新加载用户数据
+  loadUsers()
 }
 
 // 系统日志
-const logDateRange = ref([])
+const logDateRange = ref<[Date, Date] | null>(null)
 const logType = ref('')
 const logCurrentPage = ref(1)
 const logPageSize = ref(10)
 const totalLogs = ref(0)
+const logs = ref<API.SystemLogs[]>([])
 
-// 模拟日志数据
-const logs = ref([
-  {
-    timestamp: '2024-01-20 10:00:00',
-    type: 'system',
-    content: '系统启动',
-    operator: 'System'
-  },
-  {
-    timestamp: '2024-01-20 10:05:00',
-    type: 'operation',
-    content: '用户登录',
-    operator: '管理员'
-  },
-  {
-    timestamp: '2024-01-20 10:10:00',
-    type: 'error',
-    content: '数据库连接失败',
-    operator: 'System'
+// 加载日志数据
+const loadLogs = async () => {
+  try {
+    const res = await getSystemLogPage({
+      pageNum: logCurrentPage.value,
+      pageSize: logPageSize.value,
+      type: logType.value || undefined,
+      from: logDateRange.value ? dayjs(logDateRange.value[0]).format('YYYY-MM-DD') : undefined,
+      to: logDateRange.value ? dayjs(logDateRange.value[1]).format('YYYY-MM-DD') : undefined
+    })
+    if (res.data) {
+      logs.value = res.data.data.records
+      totalLogs.value = res.data.data.total
+    }
+  } catch (error) {
+    ElMessage.error('获取系统日志失败')
   }
-])
+}
 
-const filteredLogs = computed(() => {
-  return logs.value.filter(log => {
-    if (logType.value && log.type !== logType.value) return false
-    // TODO: 实现日期范围筛选
-    return true
-  })
+// 监听筛选条件变化
+watch([logType, logDateRange], () => {
+  logCurrentPage.value = 1
+  loadLogs()
 })
+
+const filteredLogs = computed(() => logs.value)
 
 const getLogTypeTag = (type: string) => {
   const types: Record<string, string> = {
@@ -389,12 +334,12 @@ const getLogTypeText = (type: string) => {
 
 const handleLogSizeChange = (val: number) => {
   logPageSize.value = val
-  // TODO: 重新加载日志数据
+  loadLogs()
 }
 
 const handleLogCurrentChange = (val: number) => {
   logCurrentPage.value = val
-  // TODO: 重新加载日志数据
+  loadLogs()
 }
 </script>
 
@@ -415,37 +360,6 @@ const handleLogCurrentChange = (val: number) => {
       margin: 0;
       font-weight: 500;
       color: #303133;
-    }
-  }
-
-  .dashboard-stats {
-    margin-bottom: 20px;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      
-      span {
-        font-size: 14px;
-        color: #606266;
-      }
-    }
-  }
-
-  .chart-section {
-    margin-bottom: 20px;
-
-    .chart-container {
-      height: 300px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .chart-placeholder {
-        color: #909399;
-        font-size: 14px;
-      }
     }
   }
 
