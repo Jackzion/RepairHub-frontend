@@ -143,11 +143,11 @@ onMounted(() => {
   // 鼠标交互
   const { x, y } = useMouse()
   const onMouseMove = () => {
-    const rotationFactor = 0.0003
-    outerGear.rotation.x = (y.value - window.innerHeight/2) * rotationFactor
-    outerGear.rotation.y = (x.value - window.innerWidth/2) * rotationFactor
-    innerGear.rotation.x = -(y.value - window.innerHeight/2) * rotationFactor
-    innerGear.rotation.y = -(x.value - window.innerWidth/2) * rotationFactor
+    const rotationFactor = 0.00001
+    outerGear.rotation.x += (y.value - window.innerHeight/2) * rotationFactor
+    outerGear.rotation.y += (x.value - window.innerWidth/2) * rotationFactor
+    innerGear.rotation.x -= (y.value - window.innerHeight/2) * rotationFactor
+    innerGear.rotation.y -= (x.value - window.innerWidth/2) * rotationFactor
   }
   window.addEventListener('mousemove', onMouseMove)
 
