@@ -1,12 +1,21 @@
 <template>
   <el-config-provider :locale="zhCn">
-    <main-layout>
+    <template v-if="!isAuthPage">
+      <main-layout>
+        <router-view v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+      </main-layout>
+    </template>
+    <template v-else>
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
         </transition>
       </router-view>
-    </main-layout>
+    </template>
   </el-config-provider>
 </template>
 
@@ -14,6 +23,13 @@
 import { ElConfigProvider } from 'element-plus';
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs';
 import MainLayout from './components/MainLayout.vue';
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+const isAuthPage = computed(() => {
+  return route.path === '/login' || route.path === '/register';
+});
 </script>
 
 <style>

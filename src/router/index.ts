@@ -18,9 +18,21 @@ const router = createRouter({
       meta: { requiresAuth: false }
     },
     {
-      path: '/',
+      path: '/anime',
+      name: 'anime',
+      component: () => import('../views/AnimeView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardView.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/',
+      name: 'home',
+      component: () => import('../views/AnimeView.vue'),
       meta: { requiresAuth: false }
     },
     {

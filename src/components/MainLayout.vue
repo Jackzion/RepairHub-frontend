@@ -2,7 +2,7 @@
   <el-container class="main-layout">
     <el-header height="60px">
       <div class="header-content">
-        <div class="logo">
+        <div class="logo" @click="router.push('/')" style="cursor: pointer">
           <h1>设备维修管理系统</h1>
         </div>
         <el-menu
@@ -11,7 +11,7 @@
           class="main-menu"
           :default-active="activeRoute"
         >
-          <el-menu-item index="/" v-if="loginUser?.role !== USER_ROLE_ENUM.NOT_LOGIN">
+          <el-menu-item index="/dashboard" v-if="loginUser?.role !== USER_ROLE_ENUM.NOT_LOGIN">
             <el-icon><DataLine /></el-icon>工作台
           </el-menu-item>
           <el-menu-item index="/repair/new" v-if="loginUser?.role === USER_ROLE_ENUM.USER">

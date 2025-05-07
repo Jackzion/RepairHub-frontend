@@ -51,19 +51,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 import type { LoginForm } from '../types/user';
 import USER_ROLE_ENUM from '../enums/USER_ROLE_ENUM';
 import { useLoginUserStore } from '../stores/user';
-import { userLogin } from '../api/userController';
+import { getLoginUser, userLogin } from '../api/userController';
 
 const router = useRouter();
 const userStore= useLoginUserStore();
 const loginFormRef = ref();
 const loading = ref(false);
+
+onMounted(async () => {
+  try {
+    const res = await getLoginUser();
+    if (res.data.code === 0 && res.data.data) {
+      userStore.setLoginStore(res.data.data);
+      router.push('/dashboard');
+    }
+  } catch (error) {
+    console.error('Failed to get login user:', error);
+  }
+});
 
 const loginForm = reactive<API.UserLoginRequest>({
   username: '',
@@ -87,7 +99,7 @@ const handleLogin = async () => {
         const res = await userLogin(loginForm)
         if (res.data.code === 0 && res.data.data) {
           userStore.setLoginStore(res.data.data);
-          router.push('/');
+          router.push('/dashboard');
         }
       } finally {
         loading.value = false;
