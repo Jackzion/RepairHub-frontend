@@ -143,7 +143,7 @@ onMounted(() => {
   // 鼠标交互
   const { x, y } = useMouse()
   const onMouseMove = () => {
-    const rotationFactor = 0.00001
+    const rotationFactor = 0.00002
     outerGear.rotation.x += (y.value - window.innerHeight/2) * rotationFactor
     outerGear.rotation.y += (x.value - window.innerWidth/2) * rotationFactor
     innerGear.rotation.x -= (y.value - window.innerHeight/2) * rotationFactor
