@@ -32,9 +32,9 @@
           <el-menu-item index="/ratings" v-if="loginUser?.role === USER_ROLE_ENUM.ADMIN || loginUser?.role === USER_ROLE_ENUM.MAINTAINER">
             <el-icon><Star /></el-icon>评价统计
           </el-menu-item>
-          <el-menu-item index="/ratings" v-if="loginUser?.role === USER_ROLE_ENUM.USER">
+          <!-- <el-menu-item index="/ratings" v-if="loginUser?.role === USER_ROLE_ENUM.USER">
             <el-icon><Star /></el-icon>我的评价
-          </el-menu-item>
+          </el-menu-item> -->
           <el-menu-item index="/admin" v-if="loginUser?.role === USER_ROLE_ENUM.ADMIN">
             <el-icon><User /></el-icon>系统管理
           </el-menu-item>

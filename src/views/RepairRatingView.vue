@@ -63,7 +63,7 @@
       <el-divider>评价列表</el-divider>
 
       <div class="rating-list">
-        <el-table :data="ratingList" style="width: 100%">
+        <el-table :data="resultData" style="width: 100%">
           <el-table-column prop="repairId" label="工单编号" width="120" />
           <el-table-column prop="userId" label="评论者" width="120" />
           <el-table-column label="评分" width="200">
@@ -81,13 +81,11 @@
 
         <div class="pagination">
           <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :total="total"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next"
-            @size-change="handleSizeChange"
-            @current-change="handleCurrentChange"
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :total="totalItems"
+              :page-sizes="[5, 10, 20, 50]"
+              layout="total, sizes, prev, pager, next"
           />
         </div>
       </div>
@@ -139,9 +137,16 @@ const ratingDistribution = ref([
 // 评价列表数据
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(256)
+const totalItems = ref(0)
 
-onMounted( async () => {
+// 当前页的评价列表数据
+const resultData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return ratingList.value.slice(start, end)
+})
+
+onMounted(async () => {
   fetchRatingRes()
 })
 
@@ -154,7 +159,9 @@ const fetchRatingRes = async () => {
   totalRatings.value = res.data.data.totalRatings
   satisfactionRate.value = res.data.data.satisfactionRate
   ratingList.value = res.data.data.ratingsList
+  totalItems.value = ratingList.value.length
 }
+
 
 // Mock评价列表数据
 const ratingList = ref([
@@ -214,16 +221,6 @@ const getProgressColor = (rating: number) => {
   return colors[rating]
 }
 
-// 分页处理
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  // TODO: 重新加载数据
-}
-
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  // TODO: 重新加载数据
-}
 </script>
 
 <style scoped lang="scss">

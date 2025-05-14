@@ -29,13 +29,19 @@
             <div class="table-operations">
               <el-input
                 v-model="userSearch"
-                placeholder="搜索用户"
+                placeholder="搜索用户名"
                 class="search-input"
               >
                 <template #prefix>
                   <el-icon><Search /></el-icon>
                 </template>
               </el-input>
+              <el-select v-model="roleFilter" placeholder="选择角色" clearable class="role-select">
+                <el-option label="全部" value="" />
+                <el-option label="管理员" value="2" />
+                <el-option label="维修人员" value="3" />
+                <el-option label="普通用户" value="1" />
+              </el-select>
               <el-button type="primary" @click="handleAddUser">
                 <el-icon><Plus /></el-icon>添加用户
               </el-button>
@@ -43,6 +49,11 @@
 
             <el-table :data="filteredUsers" style="width: 100%">
               <el-table-column prop="id" label="ID" width="80" />
+              <el-table-column label="头像" width="80">
+                <template #default="{ row }">
+                  <el-avatar :size="40" :src="row.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" />
+                </template>
+              </el-table-column>
               <el-table-column prop="name" label="用户名" />
               <el-table-column prop="role" label="角色">
                 <template #default="{ row }">
@@ -51,7 +62,11 @@
                   </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="createdAt" label="创建时间" />
+              <el-table-column prop="createdAt" label="创建时间">
+                <template #default="{ row }">
+                    {{ formatDate(row.createdAt) }}
+                  </template>
+              </el-table-column>
               <el-table-column label="操作" width="200">
                 <template #default="{ row }">
                   <el-button-group>
@@ -105,7 +120,11 @@
             </div>
 
             <el-table :data="filteredLogs" style="width: 100%">
-              <el-table-column prop="createdAt" label="时间" width="180" />
+              <el-table-column prop="createdAt" label="时间" width="180">
+                <template #default="{ row }">
+                    {{ formatDate(row.createdAt) }}
+                  </template>
+              </el-table-column>
               <el-table-column prop="type" label="类型" width="100">
                 <template #default="{ row }">
                   <el-tag :type="getLogTypeTag(row.type)">
@@ -166,6 +185,7 @@ const handleMenuSelect = (index: string) => {
 
 // 用户管理
 const userSearch = ref('')
+const roleFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalUsers = ref(0)
@@ -194,7 +214,13 @@ onMounted(() => {
   loadLogs()
 })
 
-const filteredUsers = computed(() => users.value)
+const filteredUsers = computed(() => {
+  return users.value.filter(user => {
+    const matchSearch = user.name.toLowerCase().includes(userSearch.value.toLowerCase())
+    const matchRole = !roleFilter.value || user.role.toString() === roleFilter.value
+    return matchSearch && matchRole
+  })
+})
 
 const getRoleTagType = (role: string) => {
   const types: Record<number, string> = {
@@ -287,6 +313,16 @@ const logCurrentPage = ref(1)
 const logPageSize = ref(10)
 const totalLogs = ref(0)
 const logs = ref<API.SystemLogs[]>([])
+
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
 // 加载日志数据
 const loadLogs = async () => {
@@ -417,3 +453,6 @@ const handleLogCurrentChange = (val: number) => {
   }
 }
 </style>
+.role-select {
+  width: 120px;
+}

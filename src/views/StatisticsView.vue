@@ -65,6 +65,15 @@
               </template>
             </el-table-column>
           </el-table>
+          <div class="pagination-container">
+            <el-pagination
+              v-model:current-page="currentPage"
+              v-model:page-size="pageSize"
+              :total="totalItems"
+              :page-sizes="[5, 10, 20, 50]"
+              layout="total, sizes, prev, pager, next"
+            />
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -276,6 +285,9 @@ const pieChartOption = computed(() => ({
   }]
 }))
 
+const currentPage = ref(1)
+const pageSize = ref(10)
+
 // 计算维修人员评分统计
 const ratingStats = computed(() => {
   const maintainerStats = {}
@@ -298,6 +310,7 @@ const ratingStats = computed(() => {
     }
   })
 
+  // 统计维修人员数据
   filteredRecords.forEach(record => {
     if (!record.maintainerName) return
     if (!maintainerStats[record.maintainerName]) {
@@ -315,11 +328,58 @@ const ratingStats = computed(() => {
     }
   })
   
-  return Object.values(maintainerStats).map(stat => ({
+  // 转换为数组并计算平均分
+  const allStats = Object.values(maintainerStats).map(stat => ({
     maintainer: stat.maintainer,
     completedCount: stat.completedCount,
-    avgRating: stat.ratedCount > 0 ? (stat.totalScore / stat.ratedCount).toFixed(1) : '0.0'
+    avgRating: stat.ratedCount > 0 ? Number(stat.totalScore / stat.ratedCount).toFixed(1) : '0.0'
   })).sort((a, b) => parseFloat(b.avgRating) - parseFloat(a.avgRating))
+
+  // 计算分页数据
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return allStats.slice(startIndex, endIndex)
+})
+
+// 计算总数据条数
+const totalItems = computed(() => {
+  const now = new Date()
+  const filteredRecords = repairRecords.value.filter(record => {
+    const recordDate = new Date(record.createdAt)
+    if (timeRange.value === 'week') {
+      const startOfWeek = new Date(now)
+      startOfWeek.setDate(now.getDate() - now.getDay())
+      startOfWeek.setHours(0, 0, 0, 0)
+      return recordDate >= startOfWeek
+    } else if (timeRange.value === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      return recordDate >= startOfMonth
+    } else { // year
+      const startOfYear = new Date(now.getFullYear(), 0, 1)
+      return recordDate >= startOfYear
+    }
+  })
+
+  const maintainerStats = {}
+  filteredRecords.forEach(record => {
+    if (record.maintainerName) {
+      if (!maintainerStats[record.maintainerName]) {
+        maintainerStats[record.maintainerName] = {
+          maintainer: record.maintainerName,
+          completedCount: 0,
+          ratedCount: 0,
+          totalScore: 0
+        }
+      }
+      maintainerStats[record.maintainerName].completedCount++
+      if (record.score !== null && record.score !== undefined) {
+        maintainerStats[record.maintainerName].ratedCount++
+        maintainerStats[record.maintainerName].totalScore += record.score
+      }
+    }
+  })
+  
+  return Object.keys(maintainerStats).length
 })
 </script>
 
@@ -409,4 +469,18 @@ const ratingStats = computed(() => {
     }
   }
 }
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
 </style>
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+}

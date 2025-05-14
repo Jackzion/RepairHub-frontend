@@ -170,7 +170,7 @@ const filteredRepairs = computed(() => {
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase();
     result = result.filter(item =>
-      item.id.toLowerCase().includes(keyword) ||
+      String(item.id).toLowerCase().includes(keyword) ||
       item.type.toLowerCase().includes(keyword) ||
       item.location.toLowerCase().includes(keyword) ||
       item.description.toLowerCase().includes(keyword)
@@ -248,15 +248,17 @@ const handleFinish = async (id: string) => {
 
 <style scoped lang="scss">
 .dashboard-container {
-  height: 100vh;
+  min-height: 100vh;
   background-color: #f5f7fa;
 
   .el-container {
-    height: 100%;
+    min-height: 100%;  // 改为 min-height
   }
 
   .el-main {
     padding: 20px;
+    height: auto;  // 添加这行
+    overflow: visible;  // 添加这行
   }
 
   .dashboard-header {
