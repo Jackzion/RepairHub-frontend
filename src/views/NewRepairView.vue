@@ -48,9 +48,9 @@
 
         <el-form-item label="紧急程度" prop="priority">
           <el-radio-group v-model="repairForm.priority">
-            <el-radio label="low">low</el-radio>
-            <el-radio label="medium">medium</el-radio>
-            <el-radio label="high">high</el-radio>
+            <el-radio label="low">低</el-radio>
+            <el-radio label="medium">中</el-radio>
+            <el-radio label="high">高</el-radio>
           </el-radio-group>
         </el-form-item>
 
